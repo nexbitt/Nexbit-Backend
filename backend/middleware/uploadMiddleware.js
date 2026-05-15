@@ -4,7 +4,8 @@
  * Configura el almacenamiento en la nube y las validaciones de archivos.
  */
 import { v2 as cloudinary } from 'cloudinary';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import CloudinaryStoragePkg from 'multer-storage-cloudinary';
+const CloudinaryStorage = CloudinaryStoragePkg.CloudinaryStorage || CloudinaryStoragePkg;
 import multer from 'multer';
 
 // ── Configurar Cloudinary con las credenciales del .env ──────
