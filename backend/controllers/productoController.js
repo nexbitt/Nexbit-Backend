@@ -5,6 +5,9 @@
  */
 import Producto from '../models/productoModel.js';
 import { v2 as cloudinary } from 'cloudinary';
+import jwt from 'jsonwebtoken';
+
+const SECRET_KEY = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura';
 
 const getAll = async (req, res) => {
     try {
@@ -19,7 +22,17 @@ const getAll = async (req, res) => {
 const getPublic = async (req, res) => {
     try {
         const data = await Producto.findAllActive();
-        res.json(data);
+        // Solo retornar campos públicos seguros requeridos. Bajo ninguna circunstancia exponer precio_compra ni stock_minimo.
+        const safeData = data.map(({ id_producto, nombre, precio_venta, categoria_nombre, imagen_url, descripcion, stock_actual }) => ({
+            id_producto,
+            nombre,
+            precio_venta,
+            categoria_nombre,
+            imagen_url,
+            descripcion,
+            stock_actual
+        }));
+        res.json(safeData);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -29,7 +42,43 @@ const getOne = async (req, res) => {
     try {
         const row = await Producto.findById(req.params.id);
         if (!row) return res.status(404).json({ message: "Producto no encontrado" });
-        res.json(row);
+
+        // Verificar si quien consulta tiene privilegios de Administrador
+        let isAdmin = false;
+        let token = null;
+
+        // 1. Intentar leer desde la cookie httpOnly
+        if (req.cookies && req.cookies.token) {
+            token = req.cookies.token;
+        }
+
+        // 2. Intentar leer desde el header Authorization
+        if (!token) {
+            const authHeader = req.headers['authorization'];
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.split(' ')[1];
+            }
+        }
+
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, SECRET_KEY);
+                // rol_id = 1 es Administrador
+                if (decoded && decoded.rol_id === 1) {
+                    isAdmin = true;
+                }
+            } catch (_) {
+                // Token inválido o expirado, tratar como invitado
+            }
+        }
+
+        if (isAdmin) {
+            res.json(row);
+        } else {
+            // Eliminar campos sensibles de costo y stock mínimo para evitar fugas de información
+            const { precio_compra, stock_minimo, ...safeRow } = row;
+            res.json(safeRow);
+        }
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

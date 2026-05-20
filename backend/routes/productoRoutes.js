@@ -11,10 +11,11 @@ import { upload } from '../middleware/uploadMiddleware.js';
 // ── Ruta PÚBLICA: catálogo para usuarios e invitados (sin token) ──
 // Solo devuelve productos activos
 router.get('/publico', productoController.getPublic);
+router.get('/public',  productoController.getPublic);
 
 // ── Rutas protegidas (admin) ──────────────────────────────────────
 router.get('/',      verificarToken, productoController.getAll);
-router.get('/:id',   verificarToken, productoController.getOne);
+router.get('/:id',   productoController.getOne);
 
 // upload.single('imagen') procesa el campo "imagen" del formulario
 // Si no se envía imagen, req.file será undefined (no falla)
