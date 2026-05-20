@@ -13,7 +13,7 @@ router.get('/me', verificarToken, usuarioController.getMe);
 // ─── Rutas PROTEGIDAS (requieren JWT válido) ──────────────────────────────────
 router.get('/', verificarToken, usuarioController.getAll);
 router.get('/:id', verificarToken, usuarioController.getOne);
-router.post('/', verificarToken, usuarioController.store);
+router.post('/', usuarioController.store);
 router.put('/:id', verificarToken, usuarioController.update);
 router.delete('/:id', verificarToken, usuarioController.destroy);
 

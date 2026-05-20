@@ -46,6 +46,51 @@ const store = async (req, res) => {
         if (!rol_id || !nombre || !email || !password) {
             return res.status(400).json({ message: 'Faltan campos obligatorios' });
         }
+
+        // Obtener el rol en base de datos para verificar si es administrativo
+        const roleObj = await Usuario.findRoleById(rol_id);
+        if (!roleObj) {
+            return res.status(400).json({ message: 'El rol especificado no existe.' });
+        }
+
+        const isRolAdministrativo = roleObj.nombre.toLowerCase().includes('admin') || 
+                                    roleObj.nombre.toLowerCase().includes('administrador');
+
+        if (isRolAdministrativo) {
+            let token = null;
+
+            // 1. Intentar leer desde la cookie httpOnly
+            if (req.cookies && req.cookies.token) {
+                token = req.cookies.token;
+            }
+
+            // 2. Fallback: leer desde el header Authorization
+            if (!token) {
+                const authHeader = req.headers['authorization'];
+                if (authHeader && authHeader.startsWith('Bearer ')) {
+                    token = authHeader.split(' ')[1];
+                }
+            }
+
+            if (!token) {
+                return res.status(401).json({ message: 'Acceso denegado. No se proporcionó un token de administrador para crear un usuario administrativo.' });
+            }
+
+            try {
+                const decoded = jwt.verify(token, SECRET_KEY);
+                // Validar que el creador sea realmente un administrador
+                const creador = await Usuario.findById(decoded.userId);
+                if (!creador || !creador.rol_nombre || !creador.rol_nombre.toLowerCase().includes('admin')) {
+                    return res.status(403).json({ message: 'Acceso denegado. Solo un administrador puede crear usuarios con privilegios administrativos.' });
+                }
+            } catch (jwtError) {
+                if (jwtError.name === 'TokenExpiredError') {
+                    return res.status(401).json({ message: 'Token de administrador expirado. Por favor, inicia sesión de nuevo.' });
+                }
+                return res.status(403).json({ message: 'Token de administrador inválido.' });
+            }
+        }
+
         const id = await Usuario.create({ rol_id, nombre, email, password, tipo_documento, numero_documento, telefono, direccion });
         res.status(201).json({ message: 'Usuario creado con éxito', id_usuario: id });
     } catch (error) {
