@@ -143,6 +143,13 @@ const Usuario = {
     // ── getRoles ───────────────────────────────────────────────────────────────
     getRoles: async () => {
         return prisma.roles.findMany();
+    },
+
+    // ── findRoleById ───────────────────────────────────────────────────────────
+    findRoleById: async (id_rol) => {
+        return prisma.roles.findUnique({
+            where: { id_rol: Number(id_rol) }
+        });
     }
 };
 

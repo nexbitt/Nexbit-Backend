@@ -23,6 +23,7 @@ import carritoRoutes from './routes/carritoRoutes.js';
 import repartidorRoutes from './routes/repartidorRoutes.js';
 import statsRoutes from './routes/statsRoutes.js';
 import reportesRoutes from './routes/reportesRoutes.js';
+import repartoRoutes from './routes/repartoRoutes.js';
 
 const app = express();
 
@@ -81,6 +82,7 @@ app.use('/api/carrito', carritoRoutes);
 app.use('/api/repartidores', repartidorRoutes);
 app.use('/api/stats',        statsRoutes);
 app.use('/api/reportes',     reportesRoutes);
+app.use('/api/reparto',      repartoRoutes);
 
 // ─── MANEJO DE ERRORES ───────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
