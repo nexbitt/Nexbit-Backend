@@ -10,7 +10,7 @@ import cookieParser from 'cookie-parser';
 import swaggerUI from 'swagger-ui-express';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const swaggerDocumentation = require('./swagger.json');
+const swaggerDocumentation = require('./swagger/swagger.json');
 
 import usuarioRoutes from './routes/usuarioRoutes.js';
 import rolRoutes from './routes/rolRoutes.js';
@@ -48,7 +48,7 @@ app.use(cors({
   origin: (origin, callback) => {
     // Permitir peticiones sin origen (como Postman o curl)
     if (!origin) return callback(null, true);
-    
+
     // Verificar si el origen está en nuestra lista blanca
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -80,9 +80,9 @@ app.use('/api/pedidos', pedidoRoutes);
 app.use('/api/facturas', facturaRoutes);
 app.use('/api/carrito', carritoRoutes);
 app.use('/api/repartidores', repartidorRoutes);
-app.use('/api/stats',        statsRoutes);
-app.use('/api/reportes',     reportesRoutes);
-app.use('/api/reparto',      repartoRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/reportes', reportesRoutes);
+app.use('/api/reparto', repartoRoutes);
 
 // ─── MANEJO DE ERRORES ───────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
