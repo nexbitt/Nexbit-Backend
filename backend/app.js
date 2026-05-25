@@ -86,7 +86,7 @@ app.use('/api/reparto', repartoRoutes);
 
 // ─── MANEJO DE ERRORES ───────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error('❌ Error no controlado:', err.stack);
+  console.error('Error no controlado:', err.stack);
   res.status(500).json({
     error: 'Error interno del servidor',
     message: err.message

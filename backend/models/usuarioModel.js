@@ -120,7 +120,7 @@ const Usuario = {
         if (telefono !== undefined) updateData.telefono = telefono;
         if (direccion !== undefined) updateData.direccion = direccion;
 
-        // ✅ CORRECCIÓN #6: normalización segura del booleano activo
+        // CORRECCIÓN #6: normalización segura del booleano activo
         if (activo !== undefined) {
             updateData.activo = normalizeActivo(activo);
         }
