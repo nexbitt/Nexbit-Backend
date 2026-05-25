@@ -6,6 +6,7 @@ import { verificarToken } from '../middleware/authMiddleware.js';
 // ─── Rutas PÚBLICAS (no requieren token) ─────────────────────────────────────
 router.post('/login', usuarioController.login);
 router.post('/logout', usuarioController.logout);   // Limpia la httpOnly cookie
+router.post('/registro', usuarioController.store);   // Registro público (auto-registro)
 router.get('/roles', usuarioController.getRoles);
 
 router.get('/me', verificarToken, usuarioController.getMe);
