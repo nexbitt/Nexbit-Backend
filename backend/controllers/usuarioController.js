@@ -138,6 +138,20 @@ const login = async (req, res) => {
         const { email, password } = req.body;
         const user = await Usuario.findByEmail(email);
 
+        if (!captchaToken) {
+            return res.status(400).json({ message: 'CAPTCHA requerido' });
+        }
+
+        const captchaVerify = await fetch(
+            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${captchaToken}`,
+            { method: 'POST' }
+        );
+        const captchaData = await captchaVerify.json();
+
+        if (!captchaData.success) {
+            return res.status(400).json({ message: 'CAPTCHA inválido, intenta de nuevo' });
+        }
+
         const passwordValida = user && await bcrypt.compare(password, user.password);
         if (!passwordValida) {
             return res.status(401).json({ message: 'Correo o contraseña incorrectos' });

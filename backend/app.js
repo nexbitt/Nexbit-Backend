@@ -10,7 +10,7 @@ import cookieParser from 'cookie-parser';
 import swaggerUI from 'swagger-ui-express';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const swaggerDocumentation = require('./swagger/swagger.json');
+const swaggerDocumentation = require('./swagger.json');
 
 import usuarioRoutes from './routes/usuarioRoutes.js';
 import rolRoutes from './routes/rolRoutes.js';
