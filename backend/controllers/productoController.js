@@ -92,7 +92,7 @@ const store = async (req, res) => {
         }
 
         // req.file.path contiene la URL pública de Cloudinary
-        const imagen_url = req.file ? req.file.path : null;
+        const imagen_url = req.file ? (req.file.path || req.file.secure_url || req.file.url) : null;
 
         const id = await Producto.create({ ...req.body, imagen_url });
         res.status(201).json({ message: "Producto creado con éxito", id_producto: id });
@@ -107,14 +107,16 @@ const update = async (req, res) => {
 
         let imagen_url = req.body.imagen_url; // URL anterior si no cambió
         if (req.file) {
-            imagen_url = req.file.path; // Nueva imagen subida a Cloudinary
+            imagen_url = req.file.path || req.file.secure_url || req.file.url; // Nueva imagen subida a Cloudinary
 
             // Borrar la imagen anterior de Cloudinary para no acumular archivos
             const productoActual = await Producto.findById(id);
             if (productoActual?.imagen_url) {
                 try {
                     const urlParts = productoActual.imagen_url.split('/');
-                    const publicId = urlParts.slice(-2).join('/').split('.')[0];
+                    // Extract rematespaisa/productos/filename without extension
+                    const folderAndFile = urlParts.slice(-3).join('/');
+                    const publicId = folderAndFile.substring(0, folderAndFile.lastIndexOf('.'));
                     await cloudinary.uploader.destroy(publicId);
                 } catch (_) {
                     // No interrumpir el flujo si falla la limpieza
@@ -139,7 +141,8 @@ const destroy = async (req, res) => {
         if (producto?.imagen_url) {
             try {
                 const urlParts = producto.imagen_url.split('/');
-                const publicId = urlParts.slice(-2).join('/').split('.')[0];
+                const folderAndFile = urlParts.slice(-3).join('/');
+                const publicId = folderAndFile.substring(0, folderAndFile.lastIndexOf('.'));
                 await cloudinary.uploader.destroy(publicId);
             } catch (_) {
                 // No interrumpir el flujo si falla la limpieza

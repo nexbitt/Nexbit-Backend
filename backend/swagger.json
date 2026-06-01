@@ -1,19 +1,85 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "API de ejemplo",
-    "description": "Esta es una API de ejemplo para demostrar Swagger",
+    "title": "Nexbit API",
+    "description": "Documentación completa de la API del sistema comercial Nexbit. Los endpoints están organizados por módulo.",
     "version": "1.0.0"
   },
   "host": "localhost:3000",
   "basePath": "/",
+  "tags": [
+    {
+      "name": "Autenticación",
+      "description": "Login, logout y registro de usuarios"
+    },
+    {
+      "name": "Usuarios",
+      "description": "Gestión de usuarios del sistema (CRUD)"
+    },
+    {
+      "name": "Roles",
+      "description": "Gestión de roles del sistema"
+    },
+    {
+      "name": "Categorías",
+      "description": "Gestión de categorías de productos"
+    },
+    {
+      "name": "Proveedores",
+      "description": "Gestión de proveedores"
+    },
+    {
+      "name": "Productos",
+      "description": "Gestión de productos e inventario (incluye subida de imágenes a Cloudinary)"
+    },
+    {
+      "name": "Carrito",
+      "description": "Operaciones del carrito de compras del cliente"
+    },
+    {
+      "name": "Pedidos",
+      "description": "Gestión de pedidos (creación, checkout, cancelación)"
+    },
+    {
+      "name": "Facturas",
+      "description": "Gestión de facturas asociadas a pedidos"
+    },
+    {
+      "name": "Repartidores",
+      "description": "Administración de repartidores y asignación de pedidos"
+    },
+    {
+      "name": "Reparto",
+      "description": "Panel del repartidor: aceptar y entregar pedidos"
+    },
+    {
+      "name": "Reportes",
+      "description": "Generación de reportes (ventas, inventario, seguridad, carritos, repartidores)"
+    },
+    {
+      "name": "Estadísticas",
+      "description": "Estadísticas públicas del sistema en tiempo real"
+    }
+  ],
   "schemes": [
     "http"
   ],
+  "securityDefinitions": {
+    "Bearer": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "Ingresa tu token JWT con el prefijo Bearer. Ejemplo: \"Bearer eyJhbGciOi...\""
+    }
+  },
   "paths": {
     "/api/usuarios/login": {
       "post": {
-        "description": "",
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Iniciar sesión",
+        "description": "Autentica al usuario y devuelve un token JWT.",
         "parameters": [
           {
             "name": "body",
@@ -49,7 +115,11 @@
     },
     "/api/usuarios/logout": {
       "post": {
-        "description": "",
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Cerrar sesión",
+        "description": "Limpia la cookie httpOnly del token.",
         "responses": {
           "200": {
             "description": "OK"
@@ -57,8 +127,78 @@
         }
       }
     },
+    "/api/usuarios/registro": {
+      "post": {
+        "tags": [
+          "Autenticación"
+        ],
+        "summary": "Registro público",
+        "description": "Permite que un nuevo usuario se auto-registre como Cliente.",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "rol_id": {
+                  "example": "any"
+                },
+                "nombre": {
+                  "example": "any"
+                },
+                "email": {
+                  "example": "any"
+                },
+                "password": {
+                  "example": "any"
+                },
+                "tipo_documento": {
+                  "example": "any"
+                },
+                "numero_documento": {
+                  "example": "any"
+                },
+                "telefono": {
+                  "example": "any"
+                },
+                "direccion": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/api/usuarios/roles": {
       "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Listar roles (público)",
         "description": "",
         "responses": {
           "200": {
@@ -70,8 +210,45 @@
         }
       }
     },
+    "/api/usuarios/me": {
+      "get": {
+        "tags": [
+          "Usuarios"
+        ],
+        "summary": "Obtener perfil del usuario autenticado",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/api/usuarios/": {
       "get": {
+        "tags": [
+          "Usuarios"
+        ],
+        "summary": "Listar todos los usuarios",
         "description": "",
         "parameters": [
           {
@@ -96,6 +273,10 @@
         }
       },
       "post": {
+        "tags": [
+          "Usuarios"
+        ],
+        "summary": "Crear un nuevo usuario",
         "description": "",
         "parameters": [
           {
@@ -158,6 +339,10 @@
     },
     "/api/usuarios/{id}": {
       "get": {
+        "tags": [
+          "Usuarios"
+        ],
+        "summary": "Obtener un usuario por ID",
         "description": "",
         "parameters": [
           {
@@ -191,6 +376,10 @@
         }
       },
       "put": {
+        "tags": [
+          "Usuarios"
+        ],
+        "summary": "Actualizar un usuario",
         "description": "",
         "parameters": [
           {
@@ -224,6 +413,10 @@
         }
       },
       "delete": {
+        "tags": [
+          "Usuarios"
+        ],
+        "summary": "Eliminar un usuario",
         "description": "",
         "parameters": [
           {
@@ -262,6 +455,10 @@
     },
     "/api/roles/": {
       "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Listar todos los roles",
         "description": "",
         "parameters": [
           {
@@ -286,6 +483,10 @@
         }
       },
       "post": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Crear un nuevo rol",
         "description": "",
         "parameters": [
           {
@@ -330,6 +531,10 @@
     },
     "/api/roles/{id}": {
       "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Obtener un rol por ID",
         "description": "",
         "parameters": [
           {
@@ -363,6 +568,10 @@
         }
       },
       "put": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Actualizar un rol",
         "description": "",
         "parameters": [
           {
@@ -396,6 +605,10 @@
         }
       },
       "delete": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Eliminar un rol",
         "description": "",
         "parameters": [
           {
@@ -434,6 +647,10 @@
     },
     "/api/categorias/": {
       "get": {
+        "tags": [
+          "Categorías"
+        ],
+        "summary": "Listar todas las categorías",
         "description": "",
         "parameters": [
           {
@@ -458,6 +675,10 @@
         }
       },
       "post": {
+        "tags": [
+          "Categorías"
+        ],
+        "summary": "Crear una nueva categoría",
         "description": "",
         "parameters": [
           {
@@ -502,6 +723,10 @@
     },
     "/api/categorias/{id}": {
       "get": {
+        "tags": [
+          "Categorías"
+        ],
+        "summary": "Obtener una categoría por ID",
         "description": "",
         "parameters": [
           {
@@ -535,6 +760,10 @@
         }
       },
       "put": {
+        "tags": [
+          "Categorías"
+        ],
+        "summary": "Actualizar una categoría",
         "description": "",
         "parameters": [
           {
@@ -568,6 +797,10 @@
         }
       },
       "delete": {
+        "tags": [
+          "Categorías"
+        ],
+        "summary": "Eliminar una categoría",
         "description": "",
         "parameters": [
           {
@@ -606,6 +839,10 @@
     },
     "/api/proveedores/": {
       "get": {
+        "tags": [
+          "Proveedores"
+        ],
+        "summary": "Listar todos los proveedores",
         "description": "",
         "parameters": [
           {
@@ -630,6 +867,10 @@
         }
       },
       "post": {
+        "tags": [
+          "Proveedores"
+        ],
+        "summary": "Crear un nuevo proveedor",
         "description": "",
         "parameters": [
           {
@@ -683,6 +924,10 @@
     },
     "/api/proveedores/{id}": {
       "get": {
+        "tags": [
+          "Proveedores"
+        ],
+        "summary": "Obtener un proveedor por ID",
         "description": "",
         "parameters": [
           {
@@ -716,6 +961,10 @@
         }
       },
       "put": {
+        "tags": [
+          "Proveedores"
+        ],
+        "summary": "Actualizar un proveedor",
         "description": "",
         "parameters": [
           {
@@ -749,6 +998,10 @@
         }
       },
       "delete": {
+        "tags": [
+          "Proveedores"
+        ],
+        "summary": "Eliminar un proveedor",
         "description": "",
         "parameters": [
           {
@@ -785,8 +1038,46 @@
         }
       }
     },
+    "/api/productos/publico": {
+      "get": {
+        "tags": [
+          "Productos"
+        ],
+        "summary": "Catálogo público de productos activos",
+        "description": "Devuelve solo productos activos sin campos sensibles. No requiere autenticación.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/productos/public": {
+      "get": {
+        "tags": [
+          "Productos"
+        ],
+        "summary": "Catálogo público (alias inglés)",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/api/productos/": {
       "get": {
+        "tags": [
+          "Productos"
+        ],
+        "summary": "Listar todos los productos (admin)",
         "description": "",
         "parameters": [
           {
@@ -811,7 +1102,14 @@
         }
       },
       "post": {
-        "description": "",
+        "tags": [
+          "Productos"
+        ],
+        "summary": "Crear un nuevo producto",
+        "description": "Soporta subida de imagen vía multipart/form-data con el campo \"imagen\".",
+        "consumes": [
+          "multipart/form-data"
+        ],
         "parameters": [
           {
             "name": "authorization",
@@ -861,6 +1159,10 @@
     },
     "/api/productos/{id}": {
       "get": {
+        "tags": [
+          "Productos"
+        ],
+        "summary": "Obtener un producto por ID",
         "description": "",
         "parameters": [
           {
@@ -879,12 +1181,6 @@
           "200": {
             "description": "OK"
           },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
           "404": {
             "description": "Not Found"
           },
@@ -894,7 +1190,14 @@
         }
       },
       "put": {
-        "description": "",
+        "tags": [
+          "Productos"
+        ],
+        "summary": "Actualizar un producto",
+        "description": "Permite actualizar datos y/o cambiar la imagen del producto.",
+        "consumes": [
+          "multipart/form-data"
+        ],
         "parameters": [
           {
             "name": "id",
@@ -906,6 +1209,18 @@
             "name": "authorization",
             "in": "header",
             "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "imagen_url": {
+                  "example": "any"
+                }
+              }
+            }
           }
         ],
         "responses": {
@@ -927,6 +1242,10 @@
         }
       },
       "delete": {
+        "tags": [
+          "Productos"
+        ],
+        "summary": "Eliminar un producto",
         "description": "",
         "parameters": [
           {
@@ -965,6 +1284,10 @@
     },
     "/api/pedidos/": {
       "get": {
+        "tags": [
+          "Pedidos"
+        ],
+        "summary": "Listar todos los pedidos",
         "description": "",
         "parameters": [
           {
@@ -989,6 +1312,10 @@
         }
       },
       "post": {
+        "tags": [
+          "Pedidos"
+        ],
+        "summary": "Crear un nuevo pedido manualmente",
         "description": "",
         "parameters": [
           {
@@ -1030,6 +1357,10 @@
     },
     "/api/pedidos/{id}/ticket": {
       "get": {
+        "tags": [
+          "Pedidos"
+        ],
+        "summary": "Obtener ticket/recibo de un pedido",
         "description": "",
         "parameters": [
           {
@@ -1065,6 +1396,10 @@
     },
     "/api/pedidos/{id}": {
       "get": {
+        "tags": [
+          "Pedidos"
+        ],
+        "summary": "Obtener un pedido por ID",
         "description": "",
         "parameters": [
           {
@@ -1098,6 +1433,10 @@
         }
       },
       "put": {
+        "tags": [
+          "Pedidos"
+        ],
+        "summary": "Actualizar un pedido",
         "description": "",
         "parameters": [
           {
@@ -1131,6 +1470,10 @@
         }
       },
       "delete": {
+        "tags": [
+          "Pedidos"
+        ],
+        "summary": "Eliminar un pedido",
         "description": "",
         "parameters": [
           {
@@ -1169,6 +1512,10 @@
     },
     "/api/pedidos/checkout": {
       "post": {
+        "tags": [
+          "Pedidos"
+        ],
+        "summary": "Realizar checkout (crear pedido desde el carrito)",
         "description": "",
         "parameters": [
           {
@@ -1210,6 +1557,10 @@
     },
     "/api/pedidos/{id}/cancelar": {
       "put": {
+        "tags": [
+          "Pedidos"
+        ],
+        "summary": "Cancelar un pedido",
         "description": "",
         "parameters": [
           {
@@ -1248,6 +1599,10 @@
     },
     "/api/facturas/": {
       "get": {
+        "tags": [
+          "Facturas"
+        ],
+        "summary": "Listar todas las facturas",
         "description": "",
         "parameters": [
           {
@@ -1272,6 +1627,10 @@
         }
       },
       "post": {
+        "tags": [
+          "Facturas"
+        ],
+        "summary": "Crear una nueva factura",
         "description": "",
         "parameters": [
           {
@@ -1316,6 +1675,10 @@
     },
     "/api/facturas/{id}": {
       "get": {
+        "tags": [
+          "Facturas"
+        ],
+        "summary": "Obtener una factura por ID",
         "description": "",
         "parameters": [
           {
@@ -1349,6 +1712,10 @@
         }
       },
       "put": {
+        "tags": [
+          "Facturas"
+        ],
+        "summary": "Actualizar una factura",
         "description": "",
         "parameters": [
           {
@@ -1382,6 +1749,10 @@
         }
       },
       "delete": {
+        "tags": [
+          "Facturas"
+        ],
+        "summary": "Eliminar una factura",
         "description": "",
         "parameters": [
           {
@@ -1420,6 +1791,10 @@
     },
     "/api/carrito/": {
       "get": {
+        "tags": [
+          "Carrito"
+        ],
+        "summary": "Obtener el carrito del usuario",
         "description": "",
         "parameters": [
           {
@@ -1456,6 +1831,10 @@
     },
     "/api/carrito/add": {
       "post": {
+        "tags": [
+          "Carrito"
+        ],
+        "summary": "Agregar producto al carrito",
         "description": "",
         "parameters": [
           {
@@ -1506,6 +1885,10 @@
     },
     "/api/carrito/clear": {
       "post": {
+        "tags": [
+          "Carrito"
+        ],
+        "summary": "Vaciar el carrito",
         "description": "",
         "parameters": [
           {
@@ -1547,6 +1930,10 @@
     },
     "/api/carrito/merge": {
       "post": {
+        "tags": [
+          "Carrito"
+        ],
+        "summary": "Fusionar carrito local con el del servidor",
         "description": "",
         "parameters": [
           {
@@ -1588,6 +1975,10 @@
     },
     "/api/carrito/update/{id_carrito}": {
       "put": {
+        "tags": [
+          "Carrito"
+        ],
+        "summary": "Actualizar cantidad de un ítem del carrito",
         "description": "",
         "parameters": [
           {
@@ -1638,6 +2029,10 @@
     },
     "/api/carrito/remove/{producto_id}": {
       "delete": {
+        "tags": [
+          "Carrito"
+        ],
+        "summary": "Eliminar un producto del carrito",
         "description": "",
         "parameters": [
           {
@@ -1665,6 +2060,566 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/repartidores/": {
+      "get": {
+        "tags": [
+          "Repartidores"
+        ],
+        "summary": "Listar todos los repartidores",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/repartidores/pedidos-sin-asignar": {
+      "get": {
+        "tags": [
+          "Repartidores"
+        ],
+        "summary": "Obtener pedidos sin repartidor asignado",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/repartidores/{id}": {
+      "get": {
+        "tags": [
+          "Repartidores"
+        ],
+        "summary": "Obtener un repartidor por ID",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/repartidores/{id}/activo": {
+      "put": {
+        "tags": [
+          "Repartidores"
+        ],
+        "summary": "Activar o desactivar un repartidor",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "activo": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/repartidores/{id}/asignar-pedido": {
+      "post": {
+        "tags": [
+          "Repartidores"
+        ],
+        "summary": "Asignar un pedido a un repartidor",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "pedido_id": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/repartidores/pedidos/{pedidoId}/desasignar": {
+      "put": {
+        "tags": [
+          "Repartidores"
+        ],
+        "summary": "Desasignar un pedido de su repartidor",
+        "description": "",
+        "parameters": [
+          {
+            "name": "pedidoId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/repartidores/pedidos/{pedidoId}/estado": {
+      "put": {
+        "tags": [
+          "Repartidores"
+        ],
+        "summary": "Cambiar el estado de un pedido asignado",
+        "description": "",
+        "parameters": [
+          {
+            "name": "pedidoId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "estado": {
+                  "example": "any"
+                },
+                "notas": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/stats/": {
+      "get": {
+        "tags": [
+          "Estadísticas"
+        ],
+        "summary": "Estadísticas generales del sistema",
+        "description": "Devuelve conteos de productos activos, pedidos, clientes y categorías. No requiere autenticación.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reportes/ventas": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "Reporte de ventas",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reportes/inventario": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "Reporte de inventario",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reportes/seguridad": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "Reporte de seguridad",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reportes/carritos": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "Reporte de carritos activos",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reportes/repartidores": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "Reporte de repartidores",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reparto/pedidos": {
+      "get": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Obtener los pedidos asignados al repartidor autenticado",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reparto/pedidos/{id_pedido}/aceptar": {
+      "post": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Aceptar un pedido asignado",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id_pedido",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reparto/pedidos/{id_pedido}/entregar": {
+      "post": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Marcar un pedido como entregado",
+        "description": "",
+        "parameters": [
+          {
+            "name": "id_pedido",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
           },
           "401": {
             "description": "Unauthorized"

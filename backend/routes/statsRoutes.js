@@ -13,6 +13,9 @@ const router = express.Router();
  * Ruta pública (sin token). Devuelve conteos del sistema.
  */
 router.get('/', async (req, res) => {
+  // #swagger.tags = ['Estadísticas']
+  // #swagger.summary = 'Estadísticas generales del sistema'
+  // #swagger.description = 'Devuelve conteos de productos activos, pedidos, clientes y categorías. No requiere autenticación.'
   try {
     const [rows] = await pool.query(`
       SELECT

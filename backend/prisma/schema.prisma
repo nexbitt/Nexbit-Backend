@@ -1,9 +1,3 @@
-// ============================================================
-// PASO 2: backend/prisma/schema.prisma
-// Solo se agrega UNA línea: imagen_url
-// El resto del archivo queda EXACTAMENTE igual
-// ============================================================
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -21,24 +15,24 @@ model roles {
 }
 
 model usuarios {
-  id_usuario                              Int                      @id @default(autoincrement())
-  rol_id                                  Int
-  nombre                                  String                   @db.VarChar(100)
-  email                                   String                   @unique(map: "email") @db.VarChar(100)
-  password                                String                   @db.VarChar(255)
-  tipo_documento                          String?                  @db.VarChar(20)
-  numero_documento                        String?                  @db.VarChar(20)
-  telefono                                String?                  @db.VarChar(20)
-  direccion                               String?                  @db.VarChar(255)
-  activo                                  Boolean?                 @default(true)
-  createdAt                               DateTime?                @default(now()) @map("created_at")
-  updatedAt                               DateTime?                @default(now()) @updatedAt @map("updated_at")
-  carrito                                 carrito[]
-  movimientos_inventario                  movimientos_inventario[]
-  pedidos_repartidor                      pedidos[]                @relation("pedidos_repartidor_idTousuarios")
-  pedidos                                 pedidos[]
-  seguimiento_pedido                      seguimiento_pedido[]
-  rol                                     roles                    @relation(fields: [rol_id], references: [id_rol], map: "fk_usuario_rol")
+  id_usuario             Int                      @id @default(autoincrement())
+  rol_id                 Int
+  nombre                 String                   @db.VarChar(100)
+  email                  String                   @unique(map: "email") @db.VarChar(100)
+  password               String                   @db.VarChar(255)
+  tipo_documento         String?                  @db.VarChar(20)
+  numero_documento       String?                  @db.VarChar(20)
+  telefono               String?                  @db.VarChar(20)
+  direccion              String?                  @db.VarChar(255)
+  activo                 Boolean?                 @default(true)
+  createdAt              DateTime?                @default(now()) @map("created_at")
+  updatedAt              DateTime?                @default(now()) @updatedAt @map("updated_at")
+  carrito                carrito[]
+  movimientos_inventario movimientos_inventario[]
+  pedidos_repartidor     pedidos[]                @relation("pedidos_repartidor_idTousuarios")
+  pedidos                pedidos[]
+  seguimiento_pedido     seguimiento_pedido[]
+  rol                    roles                    @relation(fields: [rol_id], references: [id_rol], map: "fk_usuario_rol")
 
   @@index([rol_id], map: "fk_usuario_rol")
 }
@@ -67,9 +61,7 @@ model productos {
   proveedor_id           Int?
   nombre                 String                   @db.VarChar(150)
   descripcion            String?                  @db.Text
-  // ── NUEVO CAMPO ──────────────────────────────────────────
   imagen_url             String?                  @db.VarChar(500)
-  // ─────────────────────────────────────────────────────────
   precio_compra          Decimal                  @default(0.00) @db.Decimal(12, 2)
   precio_venta           Decimal                  @default(0.00) @db.Decimal(12, 2)
   stock_actual           Int?                     @default(0)
@@ -88,24 +80,24 @@ model productos {
 }
 
 model pedidos {
-  id_pedido                                Int                  @id @default(autoincrement())
-  usuario_id                               Int
-  repartidor_id                            Int?
-  subtotal                                 Decimal?             @default(0.00) @db.Decimal(12, 2)
-  impuesto                                 Decimal?             @default(0.00) @db.Decimal(12, 2)
-  total                                    Decimal?             @default(0.00) @db.Decimal(12, 2)
-  estado                                   pedidos_estado?      @default(PENDIENTE)
-  direccion_entrega                        String?              @db.VarChar(255)
-  notas_entrega                            String?              @db.VarChar(500)
-  fecha_pedido                             DateTime?            @default(now())
-  fecha_asignacion                         DateTime?
-  fecha_entrega_est                        DateTime?
-  fecha_entrega_real                       DateTime?
-  detalle_pedido                           detalle_pedido[]
-  facturas                                 facturas[]
-  repartidor                               usuarios?            @relation("pedidos_repartidor_idTousuarios", fields: [repartidor_id], references: [id_usuario], onDelete: Restrict, onUpdate: Restrict, map: "fk_ped_repartidor")
-  usuario                                  usuarios             @relation(fields: [usuario_id], references: [id_usuario], onUpdate: Restrict, map: "fk_ped_user")
-  seguimiento_pedido                       seguimiento_pedido[]
+  id_pedido          Int                  @id @default(autoincrement())
+  usuario_id         Int
+  repartidor_id      Int?
+  subtotal           Decimal?             @default(0.00) @db.Decimal(12, 2)
+  impuesto           Decimal?             @default(0.00) @db.Decimal(12, 2)
+  total              Decimal?             @default(0.00) @db.Decimal(12, 2)
+  estado             pedidos_estado?      @default(PENDIENTE)
+  direccion_entrega  String?              @db.VarChar(255)
+  notas_entrega      String?              @db.VarChar(500)
+  fecha_pedido       DateTime?            @default(now())
+  fecha_asignacion   DateTime?
+  fecha_entrega_est  DateTime?
+  fecha_entrega_real DateTime?
+  detalle_pedido     detalle_pedido[]
+  facturas           facturas[]
+  repartidor         usuarios?            @relation("pedidos_repartidor_idTousuarios", fields: [repartidor_id], references: [id_usuario], onDelete: Restrict, onUpdate: Restrict, map: "fk_ped_repartidor")
+  usuario            usuarios             @relation(fields: [usuario_id], references: [id_usuario], onUpdate: Restrict, map: "fk_ped_user")
+  seguimiento_pedido seguimiento_pedido[]
 
   @@index([usuario_id], map: "fk_ped_user")
   @@index([repartidor_id], map: "fk_ped_repartidor")
