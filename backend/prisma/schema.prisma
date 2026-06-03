@@ -32,6 +32,10 @@ model usuarios {
   pedidos_repartidor     pedidos[]                @relation("pedidos_repartidor_idTousuarios")
   pedidos                pedidos[]
   seguimiento_pedido     seguimiento_pedido[]
+  conversaciones_cliente conversaciones[]          @relation("conversaciones_usuario")
+  conversaciones_admin   conversaciones[]          @relation("conversaciones_admin")
+  mensajes               mensajes[]
+  notificaciones         notificaciones[]
   rol                    roles                    @relation(fields: [rol_id], references: [id_rol], map: "fk_usuario_rol")
 
   @@index([rol_id], map: "fk_usuario_rol")
@@ -89,12 +93,15 @@ model pedidos {
   estado             pedidos_estado?      @default(PENDIENTE)
   direccion_entrega  String?              @db.VarChar(255)
   notas_entrega      String?              @db.VarChar(500)
+  comprobante_pago_url String?            @db.VarChar(500)
+  motivo_rechazo     String?              @db.VarChar(255)
   fecha_pedido       DateTime?            @default(now())
   fecha_asignacion   DateTime?
   fecha_entrega_est  DateTime?
   fecha_entrega_real DateTime?
   detalle_pedido     detalle_pedido[]
   facturas           facturas[]
+  conversacion       conversaciones?
   repartidor         usuarios?            @relation("pedidos_repartidor_idTousuarios", fields: [repartidor_id], references: [id_usuario], onDelete: Restrict, onUpdate: Restrict, map: "fk_ped_repartidor")
   usuario            usuarios             @relation(fields: [usuario_id], references: [id_usuario], onUpdate: Restrict, map: "fk_ped_user")
   seguimiento_pedido seguimiento_pedido[]
@@ -191,6 +198,9 @@ enum movimientos_inventario_tipo_movimiento {
 enum seguimiento_pedido_estado_anterior {
   PENDIENTE
   CONFIRMADO
+  EN_REVISION
+  APROBADO
+  RECHAZADO
   ASIGNADO
   EN_CAMINO
   ENTREGADO
@@ -200,6 +210,9 @@ enum seguimiento_pedido_estado_anterior {
 enum seguimiento_pedido_estado_nuevo {
   PENDIENTE
   CONFIRMADO
+  EN_REVISION
+  APROBADO
+  RECHAZADO
   ASIGNADO
   EN_CAMINO
   ENTREGADO
@@ -209,8 +222,67 @@ enum seguimiento_pedido_estado_nuevo {
 enum pedidos_estado {
   PENDIENTE
   CONFIRMADO
+  EN_REVISION
+  APROBADO
+  RECHAZADO
   ASIGNADO
   EN_CAMINO
   ENTREGADO
   CANCELADO
+  DISPONIBLE
+}
+
+enum tipo_notificacion {
+  NUEVO_PEDIDO
+  COMPROBANTE_SUBIDO
+  PAGO_APROBADO
+  PAGO_RECHAZADO
+  NUEVO_MENSAJE
+  PEDIDO_ASIGNADO
+}
+
+model conversaciones {
+  id_conversacion Int        @id @default(autoincrement())
+  pedido_id       Int        @unique
+  usuario_id      Int
+  admin_id        Int?
+  created_at      DateTime?  @default(now())
+  updated_at      DateTime?  @default(now()) @updatedAt
+  pedido          pedidos    @relation(fields: [pedido_id], references: [id_pedido], onDelete: Cascade, map: "fk_conv_pedido")
+  usuario         usuarios   @relation("conversaciones_usuario", fields: [usuario_id], references: [id_usuario], onUpdate: Restrict, map: "fk_conv_usuario")
+  admin           usuarios?  @relation("conversaciones_admin", fields: [admin_id], references: [id_usuario], onUpdate: Restrict, map: "fk_conv_admin")
+  mensajes        mensajes[]
+
+  @@index([pedido_id], map: "fk_conv_pedido")
+  @@index([usuario_id], map: "fk_conv_usuario")
+  @@index([admin_id], map: "fk_conv_admin")
+}
+
+model mensajes {
+  id_mensaje       Int             @id @default(autoincrement())
+  conversacion_id  Int
+  remitente_id     Int
+  mensaje          String          @db.Text
+  leido            Boolean         @default(false)
+  created_at       DateTime?       @default(now())
+  conversacion     conversaciones  @relation(fields: [conversacion_id], references: [id_conversacion], onDelete: Cascade, map: "fk_msg_conv")
+  remitente        usuarios        @relation(fields: [remitente_id], references: [id_usuario], onUpdate: Restrict, map: "fk_msg_remitente")
+
+  @@index([conversacion_id], map: "fk_msg_conv")
+  @@index([remitente_id], map: "fk_msg_remitente")
+}
+
+model notificaciones {
+  id_notificacion Int                @id @default(autoincrement())
+  usuario_id      Int
+  tipo            tipo_notificacion
+  titulo          String             @db.VarChar(200)
+  mensaje         String?            @db.Text
+  pedido_id       Int?
+  leido           Boolean            @default(false)
+  created_at      DateTime?          @default(now())
+  usuario         usuarios           @relation(fields: [usuario_id], references: [id_usuario], onDelete: Cascade, map: "fk_notif_usuario")
+
+  @@index([usuario_id], map: "fk_notif_usuario")
+  @@index([leido], map: "idx_notif_leido")
 }

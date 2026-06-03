@@ -38,6 +38,9 @@ const Pedido = {
                     p.estado === 'ENTREGADO' ? 'ENTREGADO' :
                     p.estado === 'CANCELADO' ? 'CANCELADO' :
                     p.estado === 'ASIGNADO' || p.estado === 'EN_CAMINO' ? 'EN_REPARTO' :
+                    p.estado === 'APROBADO' ? 'APROBADO' :
+                    p.estado === 'EN_REVISION' ? 'EN_REVISION' :
+                    p.estado === 'RECHAZADO' ? 'RECHAZADO' :
                     (p.estado === 'PENDIENTE' || p.estado === 'CONFIRMADO') && !p.repartidor_id ? 'DISPONIBLE' :
                     p.estado,
             };
@@ -76,6 +79,22 @@ const Pedido = {
         return result.count > 0;
     },
 
+    updateComprobante: async (id, comprobantePagoUrl) => {
+        const result = await prisma.pedidos.updateMany({
+            where: { id_pedido: Number(id) },
+            data: { comprobante_pago_url: comprobantePagoUrl, estado: 'EN_REVISION' }
+        });
+        return result.count > 0;
+    },
+
+    updateStatusWithMotivo: async (id, estado, motivo) => {
+        const result = await prisma.pedidos.updateMany({
+            where: { id_pedido: Number(id) },
+            data: { estado, ...(motivo ? { motivo_rechazo: motivo } : {}) }
+        });
+        return result.count > 0;
+    },
+
     // Actualizar solo el estado
     updateStatus: async (id, estado) => {
         const result = await prisma.pedidos.updateMany({
@@ -96,7 +115,7 @@ const Pedido = {
         const pedido = await prisma.pedidos.findUnique({
             where: { id_pedido: Number(id) },
             include: {
-                usuario: { select: { nombre: true, email: true, numero_documento: true } },
+                usuario: { select: { nombre: true, email: true, numero_documento: true, telefono: true } },
                 detalle_pedido: {
                     orderBy: { id_detalle_pedido: 'asc' },
                     include: { producto: { select: { nombre: true, imagen_url: true } } }
@@ -111,6 +130,7 @@ const Pedido = {
             usuario_nombre:     pedido.usuario?.nombre,
             usuario_email:      pedido.usuario?.email,
             numero_documento:   pedido.usuario?.numero_documento,
+            usuario_telefono:   pedido.usuario?.telefono,
             usuario: undefined,
             detalles: pedido.detalle_pedido.map(d => ({
                 ...d,

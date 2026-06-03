@@ -13,7 +13,7 @@ const obtenerDisponibles = async (req, res) => {
     const pedidos = await prisma.pedidos.findMany({
       where: {
         repartidor_id: null,
-        estado: { in: ['PENDIENTE', 'CONFIRMADO'] },
+        estado: { in: ['APROBADO'] },
       },
       include: {
         usuario: { select: { nombre: true, direccion: true, telefono: true } },
@@ -182,7 +182,7 @@ const tomarPedido = async (req, res) => {
       where: {
         id_pedido: parseInt(id_pedido),
         repartidor_id: null,
-        estado: { in: ['PENDIENTE', 'CONFIRMADO'] },
+        estado: { in: ['APROBADO'] },
       },
       data: {
         estado: 'ASIGNADO',

@@ -4,6 +4,7 @@
  */
 import Pedido from '../models/pedidoModel.js';
 import prisma from '../config/prisma.js';
+import { getIO } from '../socket.js';
 
 const getAll = async (req, res) => {
     try {
@@ -159,4 +160,216 @@ const cancelar = async (req, res) => {
     }
 };
 
-export default { getAll, getOne, checkout, store, update, destroy, getTicket, cancelar };
+const subirComprobante = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const pedido = await Pedido.findById(id);
+        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (pedido.estado !== 'PENDIENTE') {
+            return res.status(400).json({ message: "El pedido no está en estado Pendiente" });
+        }
+        if (!req.file) return res.status(400).json({ message: "Debe subir un archivo de imagen" });
+
+        const comprobanteUrl = req.file.path;
+        const actualizado = await Pedido.updateComprobante(id, comprobanteUrl);
+
+        if (!actualizado) return res.status(500).json({ message: "No se pudo actualizar el comprobante" });
+
+        await prisma.seguimiento_pedido.create({
+            data: {
+                pedido_id: Number(id),
+                estado_anterior: 'PENDIENTE',
+                estado_nuevo: 'EN_REVISION',
+                cambiado_por: pedido.usuario_id,
+                notas: 'Cliente subió comprobante de pago'
+            }
+        });
+
+        const admins = await prisma.usuarios.findMany({
+            where: { rol_id: 1, activo: true },
+            select: { id_usuario: true }
+        });
+
+        for (const admin of admins) {
+            await prisma.notificaciones.create({
+                data: {
+                    usuario_id: admin.id_usuario,
+                    tipo: 'COMPROBANTE_SUBIDO',
+                    titulo: `Nuevo comprobante de pago - Pedido #${id}`,
+                    mensaje: `El cliente ha subido un comprobante de pago para el pedido #${id}. Revisa y aprueba el pago.`,
+                    pedido_id: Number(id)
+                }
+            });
+        }
+
+        const io = getIO();
+        io.to('admin').emit('notificacion:nuevo-comprobante', {
+            pedido_id: Number(id),
+            titulo: `Nuevo comprobante de pago - Pedido #${id}`,
+            mensaje: 'Un cliente ha subido un comprobante de pago para revisión.'
+        });
+
+        res.json({ message: "Comprobante subido con éxito. Pedido en revisión." });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const aprobarPago = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const adminId = req.usuario.userId;
+        const pedido = await Pedido.findById(id);
+        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (pedido.estado !== 'EN_REVISION') {
+            return res.status(400).json({ message: "El pedido no está en revisión" });
+        }
+
+        const actualizado = await Pedido.updateStatus(id, 'APROBADO');
+        if (!actualizado) return res.status(500).json({ message: "No se pudo aprobar el pago" });
+
+        await prisma.seguimiento_pedido.create({
+            data: {
+                pedido_id: Number(id),
+                estado_anterior: 'EN_REVISION',
+                estado_nuevo: 'APROBADO',
+                cambiado_por: adminId,
+                notas: 'Administrador aprobó el pago'
+            }
+        });
+
+        await prisma.notificaciones.create({
+            data: {
+                usuario_id: pedido.usuario_id,
+                tipo: 'PAGO_APROBADO',
+                titulo: `Pago aprobado - Pedido #${id}`,
+                mensaje: 'Tu pago ha sido aprobado. Tu pedido ya está disponible para entrega.',
+                pedido_id: Number(id)
+            }
+        });
+
+        const io = getIO();
+        io.to(`usuario:${pedido.usuario_id}`).emit('notificacion:pago-aprobado', {
+            pedido_id: Number(id),
+            mensaje: 'Tu pago ha sido aprobado. Tu pedido está en proceso.'
+        });
+
+        res.json({ message: "Pago aprobado. Pedido listo para entrega." });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const rechazarPago = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { motivo } = req.body;
+        const adminId = req.usuario.userId;
+        const pedido = await Pedido.findById(id);
+        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (pedido.estado !== 'EN_REVISION') {
+            return res.status(400).json({ message: "El pedido no está en revisión" });
+        }
+
+        const actualizado = await Pedido.updateStatusWithMotivo(id, 'RECHAZADO', motivo || 'Pago rechazado');
+        if (!actualizado) return res.status(500).json({ message: "No se pudo rechazar el pago" });
+
+        await prisma.seguimiento_pedido.create({
+            data: {
+                pedido_id: Number(id),
+                estado_anterior: 'EN_REVISION',
+                estado_nuevo: 'RECHAZADO',
+                cambiado_por: adminId,
+                notas: motivo || 'Administrador rechazó el pago'
+            }
+        });
+
+        await prisma.notificaciones.create({
+            data: {
+                usuario_id: pedido.usuario_id,
+                tipo: 'PAGO_RECHAZADO',
+                titulo: `Pago rechazado - Pedido #${id}`,
+                mensaje: `Tu pago ha sido rechazado. Motivo: ${motivo || 'Pago no válido'}. Contacta al administrador para más información.`,
+                pedido_id: Number(id)
+            }
+        });
+
+        const io = getIO();
+        io.to(`usuario:${pedido.usuario_id}`).emit('notificacion:pago-rechazado', {
+            pedido_id: Number(id),
+            mensaje: `Tu pago ha sido rechazado: ${motivo || 'Pago no válido'}`
+        });
+
+        res.json({ message: "Pago rechazado. Se notificará al cliente." });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const pedidosEnRevision = async (req, res) => {
+    try {
+        const data = await prisma.pedidos.findMany({
+            where: { estado: 'EN_REVISION' },
+            orderBy: { fecha_pedido: 'desc' },
+            include: {
+                usuario: { select: { nombre: true, email: true, telefono: true } },
+                detalle_pedido: {
+                    include: { producto: { select: { nombre: true, imagen_url: true } } }
+                }
+            }
+        });
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const verificarPedidoActivo = async (req, res) => {
+    try {
+        const { usuario_id } = req.params;
+        const pedido = await prisma.pedidos.findFirst({
+            where: {
+                usuario_id: Number(usuario_id),
+                estado: { in: ['EN_REVISION', 'PENDIENTE'] }
+            },
+            select: { id_pedido: true, estado: true }
+        });
+        res.json({ tienePedidoActivo: !!pedido, pedido });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const enviarComentario = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { comentario } = req.body;
+        const adminId = req.usuario.userId;
+        const pedido = await Pedido.findById(id);
+        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (!comentario || !comentario.trim()) {
+            return res.status(400).json({ message: "El comentario es obligatorio" });
+        }
+
+        const estadosValidos = ['EN_REVISION', 'PENDIENTE', 'APROBADO', 'RECHAZADO'];
+        if (!estadosValidos.includes(pedido.estado)) {
+            return res.status(400).json({ message: "No se pueden enviar comentarios en este estado" });
+        }
+
+        await prisma.seguimiento_pedido.create({
+            data: {
+                pedido_id: Number(id),
+                estado_anterior: pedido.estado,
+                estado_nuevo: pedido.estado,
+                cambiado_por: adminId,
+                notas: `COMENTARIO: ${comentario.trim()}`
+            }
+        });
+
+        res.json({ message: "Comentario enviado con éxito" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export default { getAll, getOne, checkout, store, update, destroy, getTicket, cancelar, subirComprobante, aprobarPago, rechazarPago, pedidosEnRevision, verificarPedidoActivo, enviarComentario };

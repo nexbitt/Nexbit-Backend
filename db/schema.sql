@@ -105,6 +105,9 @@ CREATE TABLE pedidos (
     estado             ENUM(
                            'PENDIENTE',
                            'CONFIRMADO',
+                           'EN_REVISION',
+                           'APROBADO',
+                           'RECHAZADO',
                            'ASIGNADO',
                            'EN_CAMINO',
                            'ENTREGADO',
@@ -112,6 +115,8 @@ CREATE TABLE pedidos (
                        )             DEFAULT 'PENDIENTE',
     direccion_entrega  VARCHAR(255)  NULL,
     notas_entrega      VARCHAR(500)  NULL,
+    comprobante_pago_url VARCHAR(500) NULL,
+    motivo_rechazo     VARCHAR(255)  NULL,
     fecha_pedido       DATETIME(3)   DEFAULT CURRENT_TIMESTAMP(3),
     fecha_asignacion   DATETIME(3)   NULL,
     fecha_entrega_est  DATETIME(3)   NULL,
@@ -145,6 +150,9 @@ CREATE TABLE seguimiento_pedido (
     estado_anterior ENUM(
                         'PENDIENTE',
                         'CONFIRMADO',
+                        'EN_REVISION',
+                        'APROBADO',
+                        'RECHAZADO',
                         'ASIGNADO',
                         'EN_CAMINO',
                         'ENTREGADO',
@@ -153,6 +161,9 @@ CREATE TABLE seguimiento_pedido (
     estado_nuevo    ENUM(
                         'PENDIENTE',
                         'CONFIRMADO',
+                        'EN_REVISION',
+                        'APROBADO',
+                        'RECHAZADO',
                         'ASIGNADO',
                         'EN_CAMINO',
                         'ENTREGADO',

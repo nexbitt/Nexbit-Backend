@@ -16,7 +16,7 @@ cloudinary.v2.config({
 });
 
 // ── Definir dónde y cómo se guardan las imágenes ────────────
-const storage = new CloudinaryStorage({
+const productStorage = new CloudinaryStorage({
     cloudinary,
     params: {
         folder:         'rematespaisa/productos',   // Carpeta en tu cuenta Cloudinary
@@ -24,6 +24,18 @@ const storage = new CloudinaryStorage({
         transformation: [
             { width: 800, height: 800, crop: 'limit' }, // Máximo 800x800px (ahorra espacio)
             { quality: 'auto' }                          // Calidad automática optimizada
+        ],
+    },
+});
+
+const comprobanteStorage = new CloudinaryStorage({
+    cloudinary,
+    params: {
+        folder:         'rematespaisa/comprobantes',
+        allowed_formats: ['jpg', 'jpeg', 'png'],
+        transformation: [
+            { width: 1200, height: 1200, crop: 'limit' },
+            { quality: 'auto' }
         ],
     },
 });
@@ -38,9 +50,24 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
+const comprobanteFileFilter = (req, file, cb) => {
+    const tiposPermitidos = ['image/jpeg', 'image/png', 'image/jpg'];
+    if (tiposPermitidos.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Solo se permiten imágenes de comprobante (JPG, PNG)'), false);
+    }
+};
+
 // ── Instancia de Multer lista para usar en las rutas ────────
 export const upload = multer({
-    storage,
+    storage: productStorage,
     fileFilter,
     limits: { fileSize: 5 * 1024 * 1024 }, // Máximo 5MB por imagen
+});
+
+export const uploadComprobante = multer({
+    storage: comprobanteStorage,
+    fileFilter: comprobanteFileFilter,
+    limits: { fileSize: 3 * 1024 * 1024 }, // Máximo 3MB para comprobantes
 });

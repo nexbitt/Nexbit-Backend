@@ -2525,12 +2525,8 @@
         }
       }
     },
-    "/api/reparto/pedidos": {
+    "/api/reparto/disponibles": {
       "get": {
-        "tags": [
-          "Reparto"
-        ],
-        "summary": "Obtener los pedidos asignados al repartidor autenticado",
         "description": "",
         "parameters": [
           {
@@ -2555,12 +2551,65 @@
         }
       }
     },
-    "/api/reparto/pedidos/{id_pedido}/aceptar": {
-      "post": {
-        "tags": [
-          "Reparto"
+    "/api/reparto/activo": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
         ],
-        "summary": "Aceptar un pedido asignado",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reparto/historial": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "filtro",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reparto/{id_pedido}/tomar": {
+      "post": {
         "description": "",
         "parameters": [
           {
@@ -2594,12 +2643,8 @@
         }
       }
     },
-    "/api/reparto/pedidos/{id_pedido}/entregar": {
-      "post": {
-        "tags": [
-          "Reparto"
-        ],
-        "summary": "Marcar un pedido como entregado",
+    "/api/reparto/{id_pedido}/en-camino": {
+      "put": {
         "description": "",
         "parameters": [
           {
@@ -2620,6 +2665,161 @@
           },
           "400": {
             "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reparto/{id_pedido}/entregar": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id_pedido",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reparto/{id_pedido}/cancelar": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id_pedido",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "motivo": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reparto/{id_pedido}/problema": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id_pedido",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "descripcion": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reparto/zonas-calientes": {
+      "get": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           },
           "401": {
             "description": "Unauthorized"
