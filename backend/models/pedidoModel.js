@@ -4,9 +4,44 @@ const Pedido = {
     findAll: async () => {
         const rows = await prisma.pedidos.findMany({
             orderBy: { id_pedido: 'asc' },
-            include: { usuario: { select: { nombre: true } } }
+            include: {
+                usuario: { select: { nombre: true } },
+                seguimiento_pedido: {
+                    orderBy: { fecha: 'desc' },
+                    take: 2,
+                    select: { notas: true, estado_nuevo: true, cambiado_por: true, fecha: true },
+                },
+            },
         });
-        return rows.map(p => ({ ...p, usuario_nombre: p.usuario?.nombre, usuario: undefined }));
+        return rows.map(p => {
+            const events = p.seguimiento_pedido || [];
+            const problemaEvent = events.find(e =>
+                e.notas?.includes('PROBLEMA') ||
+                e.notas?.includes('Cancelado por repartidor')
+            );
+            const alertEvent = problemaEvent || events[0];
+            const tieneAlerta = alertEvent &&
+                (alertEvent.notas?.includes('PROBLEMA') ||
+                 alertEvent.notas?.includes('Cancelado por repartidor') ||
+                 alertEvent.notas?.includes('Liberación automática')) &&
+                p.estado !== 'ENTREGADO';
+
+            return {
+                ...p,
+                usuario_nombre: p.usuario?.nombre,
+                usuario: undefined,
+                seguimiento_pedido: undefined,
+                alerta: tieneAlerta
+                    ? { motivo: alertEvent.notas, fecha: alertEvent.fecha }
+                    : null,
+                fsm_estado:
+                    p.estado === 'ENTREGADO' ? 'ENTREGADO' :
+                    p.estado === 'CANCELADO' ? 'CANCELADO' :
+                    p.estado === 'ASIGNADO' || p.estado === 'EN_CAMINO' ? 'EN_REPARTO' :
+                    (p.estado === 'PENDIENTE' || p.estado === 'CONFIRMADO') && !p.repartidor_id ? 'DISPONIBLE' :
+                    p.estado,
+            };
+        });
     },
 
     findById: async (id) => {

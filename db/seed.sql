@@ -13,7 +13,7 @@ INSERT INTO roles (id_rol, nombre, descripcion) VALUES
 -- 2. USUARIOS
 -- =====================================================
 INSERT INTO usuarios (rol_id, nombre, email, password, numero_documento, telefono) VALUES
-(1, 'Sebastian Admin', 'admin@remate.com	',   '$2b$10$FmvdWkpOie1MECB/paY9a.D1XyitCgIDj1g4XIZGqXvgIR4sVNGh6', '1010', '3001000001'),
+(1, 'Sebastian Admin', 'admin@remate.com',   '$2b$10$FmvdWkpOie1MECB/paY9a.D1XyitCgIDj1g4XIZGqXvgIR4sVNGh6', '1010', '3001000001'),
 (2, 'Juan Cliente',    'juan@email.com',     '$2b$10$FmvdWkpOie1MECB/paY9a.D1XyitCgIDj1g4XIZGqXvgIR4sVNGh6', '2020', '3002000002'),
 (2, 'Maria Compra',    'maria@email.com',    '$2b$10$FmvdWkpOie1MECB/paY9a.D1XyitCgIDj1g4XIZGqXvgIR4sVNGh6', '3030', '3003000003'),
 (2, 'Carlos Venta',    'carlos@email.com',   '$2b$10$FmvdWkpOie1MECB/paY9a.D1XyitCgIDj1g4XIZGqXvgIR4sVNGh6', '4040', '3004000004'),

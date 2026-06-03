@@ -1,12 +1,13 @@
-/**
- * @file server.js
- * @description Punto de entrada del servidor backend.
- * Inicia el servicio Express en el puerto configurado.
- */
+import http from 'http';
 import app from './app.js';
+import { configureSocket } from './socket.js';
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+
+configureSocket(server);
+
+server.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
