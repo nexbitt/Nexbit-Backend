@@ -104,7 +104,7 @@ const Repartidor = {
             where: { id_pedido: Number(pedidoId) },
             data: {
                 repartidor_id: null,
-                estado: 'CONFIRMADO',
+                estado: 'APROBADO',
                 fecha_asignacion: null
             }
         });
@@ -139,7 +139,7 @@ const Repartidor = {
         const pedidos = await prisma.pedidos.findMany({
             where: {
                 repartidor_id: null,
-                estado: { in: ['CONFIRMADO', 'PENDIENTE'] }
+                estado: { in: ['APROBADO'] }
             },
             include: {
                 usuario: { select: { nombre: true } }

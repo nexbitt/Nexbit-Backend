@@ -5,6 +5,7 @@ const obtenerOCrearConversacion = async (req, res) => {
   try {
     const { pedido_id } = req.params;
     const userId = req.usuario.userId;
+    const userRoleId = req.usuario.rol_id;
 
     let conversacion = await prisma.conversaciones.findUnique({
       where: { pedido_id: Number(pedido_id) },
@@ -25,11 +26,13 @@ const obtenerOCrearConversacion = async (req, res) => {
       });
       if (!pedido) return res.status(404).json({ message: 'Pedido no encontrado' });
 
+      const adminId = userRoleId === 1 ? userId : null;
+
       conversacion = await prisma.conversaciones.create({
         data: {
           pedido_id: Number(pedido_id),
           usuario_id: pedido.usuario_id,
-          admin_id: req.usuario.rol_id === 1 ? userId : null
+          admin_id: adminId
         },
         include: {
           mensajes: {
@@ -79,6 +82,14 @@ const enviarMensaje = async (req, res) => {
 
     const io = getIO();
     io.to(`chat:${conversacion_id}`).emit('chat:message', nuevoMensaje);
+
+    if (req.usuario.rol_id !== 1) {
+      io.to('admin').emit('notificacion:chat', {
+        conversacion_id: Number(conversacion_id),
+        mensaje: nuevoMensaje.mensaje,
+        remitente_id: remitenteId
+      });
+    }
 
     res.status(201).json(nuevoMensaje);
   } catch (error) {

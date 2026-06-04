@@ -111,7 +111,8 @@ CREATE TABLE pedidos (
                            'ASIGNADO',
                            'EN_CAMINO',
                            'ENTREGADO',
-                           'CANCELADO'
+                           'CANCELADO',
+                           'DISPONIBLE'
                        )             DEFAULT 'PENDIENTE',
     direccion_entrega  VARCHAR(255)  NULL,
     notas_entrega      VARCHAR(500)  NULL,

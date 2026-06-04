@@ -2,6 +2,7 @@
  * @file pedidoController.js
  * @description Controlador para la gestión de pedidos y transacciones de checkout.
  */
+import { v2 as cloudinary } from 'cloudinary';
 import Pedido from '../models/pedidoModel.js';
 import prisma from '../config/prisma.js';
 import { getIO } from '../socket.js';
@@ -78,6 +79,13 @@ const checkout = async (req, res) => {
             }
             await tx.carrito.deleteMany({ where: { usuario_id: Number(usuario_id) } });
             return pedido;
+        });
+
+        const io = getIO();
+        io.to('admin').emit('notificacion:nuevo-pedido', {
+            pedido_id: transactionResult.id_pedido,
+            titulo: `Nuevo pedido #${transactionResult.id_pedido}`,
+            mensaje: 'Un cliente ha realizado un nuevo pedido.'
         });
 
         res.status(201).json({ message: "Pedido procesado con éxito", id_pedido: transactionResult.id_pedido });
@@ -165,23 +173,39 @@ const subirComprobante = async (req, res) => {
         const { id } = req.params;
         const pedido = await Pedido.findById(id);
         if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
-        if (pedido.estado !== 'PENDIENTE') {
-            return res.status(400).json({ message: "El pedido no está en estado Pendiente" });
+        if (pedido.estado !== 'PENDIENTE' && pedido.estado !== 'RECHAZADO') {
+            return res.status(400).json({ message: "El pedido debe estar en estado Pendiente o Rechazado" });
         }
         if (!req.file) return res.status(400).json({ message: "Debe subir un archivo de imagen" });
+
+        // Si ya hay un comprobante anterior, eliminarlo de Cloudinary
+        if (pedido.comprobante_pago_url) {
+            try {
+                const urlParts = pedido.comprobante_pago_url.split('/');
+                const folderAndFile = urlParts.slice(-3).join('/');
+                const publicId = folderAndFile.substring(0, folderAndFile.lastIndexOf('.'));
+                await cloudinary.uploader.destroy(publicId);
+            } catch (_) {
+                // No interrumpir si falla la limpieza
+            }
+        }
 
         const comprobanteUrl = req.file.path;
         const actualizado = await Pedido.updateComprobante(id, comprobanteUrl);
 
         if (!actualizado) return res.status(500).json({ message: "No se pudo actualizar el comprobante" });
 
+        const estadoAnterior = pedido.estado;
+
         await prisma.seguimiento_pedido.create({
             data: {
                 pedido_id: Number(id),
-                estado_anterior: 'PENDIENTE',
+                estado_anterior: estadoAnterior,
                 estado_nuevo: 'EN_REVISION',
                 cambiado_por: pedido.usuario_id,
-                notas: 'Cliente subió comprobante de pago'
+                notas: estadoAnterior === 'RECHAZADO'
+                    ? 'Cliente re-subió comprobante de pago tras rechazo'
+                    : 'Cliente subió comprobante de pago'
             }
         });
 

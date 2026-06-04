@@ -34,7 +34,7 @@ const obtenerDisponibles = async (req, res) => {
       const alertEvent = problemaEvent || events[0];
       const tieneAlerta =
         alertEvent &&
-        alertEvent.estado_nuevo === 'PENDIENTE' &&
+        alertEvent.estado_nuevo === 'APROBADO' &&
         alertEvent.cambiado_por !== null;
 
       return {
@@ -143,7 +143,7 @@ const obtenerHistorial = async (req, res) => {
         const estadoHistorico =
           ultimaAccion?.estado_nuevo === 'ENTREGADO'
             ? 'ENTREGADO'
-            : ultimaAccion?.estado_nuevo === 'PENDIENTE'
+            : ultimaAccion?.estado_nuevo === 'APROBADO'
               ? 'CANCELADO'
               : ultimaAccion?.estado_nuevo === 'ASIGNADO'
                 ? 'EN_REPARTO'
@@ -198,7 +198,7 @@ const tomarPedido = async (req, res) => {
     await prisma.seguimiento_pedido.create({
       data: {
         pedido_id: parseInt(id_pedido),
-        estado_anterior: 'PENDIENTE',
+        estado_anterior: 'APROBADO',
         estado_nuevo: 'ASIGNADO',
         cambiado_por: repartidorId,
         notas: 'Repartidor tomó el pedido',
@@ -306,7 +306,7 @@ const cancelarPedido = async (req, res) => {
     const result = await prisma.pedidos.update({
       where: { id_pedido: parseInt(id_pedido) },
       data: {
-        estado: 'PENDIENTE',
+        estado: 'APROBADO',
         repartidor_id: null,
         fecha_asignacion: null,
       },
@@ -320,7 +320,7 @@ const cancelarPedido = async (req, res) => {
       data: {
         pedido_id: parseInt(id_pedido),
         estado_anterior: pedido.estado,
-        estado_nuevo: 'PENDIENTE',
+        estado_nuevo: 'APROBADO',
         cambiado_por: repartidorId,
         notas: motivo || `Cancelado por repartidor (estaba ${pedido.estado})`,
       },
@@ -366,16 +366,16 @@ const reportarProblema = async (req, res) => {
       const actual = await prisma.pedidos.findUnique({
         where: { id_pedido: parseInt(id_pedido) },
       });
-      if (actual && actual.repartidor_id === repartidorId && actual.estado !== 'ENTREGADO' && actual.estado !== 'PENDIENTE') {
+      if (actual && actual.repartidor_id === repartidorId && actual.estado !== 'ENTREGADO' && actual.estado !== 'APROBADO') {
         await prisma.pedidos.update({
           where: { id_pedido: parseInt(id_pedido) },
-          data: { estado: 'PENDIENTE', repartidor_id: null, fecha_asignacion: null },
+          data: { estado: 'APROBADO', repartidor_id: null, fecha_asignacion: null },
         });
         await prisma.seguimiento_pedido.create({
           data: {
             pedido_id: parseInt(id_pedido),
             estado_anterior: actual.estado,
-            estado_nuevo: 'PENDIENTE',
+            estado_nuevo: 'APROBADO',
             cambiado_por: repartidorId,
             notas: 'Liberación automática por problema no resuelto en 5 min',
           },

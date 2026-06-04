@@ -38,10 +38,9 @@ const Pedido = {
                     p.estado === 'ENTREGADO' ? 'ENTREGADO' :
                     p.estado === 'CANCELADO' ? 'CANCELADO' :
                     p.estado === 'ASIGNADO' || p.estado === 'EN_CAMINO' ? 'EN_REPARTO' :
-                    p.estado === 'APROBADO' ? 'APROBADO' :
+                    p.estado === 'APROBADO' && !p.repartidor_id ? 'DISPONIBLE' :
                     p.estado === 'EN_REVISION' ? 'EN_REVISION' :
                     p.estado === 'RECHAZADO' ? 'RECHAZADO' :
-                    (p.estado === 'PENDIENTE' || p.estado === 'CONFIRMADO') && !p.repartidor_id ? 'DISPONIBLE' :
                     p.estado,
             };
         });
