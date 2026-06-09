@@ -83,28 +83,43 @@ model productos {
   @@index([proveedor_id], map: "fk_prod_prov")
 }
 
+model configuracion_bancaria {
+  id_configuracion Int      @id @default(autoincrement())
+  banco            String   @db.VarChar(100)
+  tipo_cuenta      String   @db.VarChar(50)
+  numero_cuenta    String   @db.VarChar(50)
+  titular          String   @db.VarChar(150)
+  documento        String?  @db.VarChar(30)
+  descripcion      String?  @db.VarChar(255)
+  activo           Boolean? @default(true)
+  created_at       DateTime? @default(now())
+  updated_at       DateTime? @default(now()) @updatedAt
+}
+
 model pedidos {
-  id_pedido          Int                  @id @default(autoincrement())
-  usuario_id         Int
-  repartidor_id      Int?
-  subtotal           Decimal?             @default(0.00) @db.Decimal(12, 2)
-  impuesto           Decimal?             @default(0.00) @db.Decimal(12, 2)
-  total              Decimal?             @default(0.00) @db.Decimal(12, 2)
-  estado             pedidos_estado?      @default(PENDIENTE)
-  direccion_entrega  String?              @db.VarChar(255)
-  notas_entrega      String?              @db.VarChar(500)
-  comprobante_pago_url String?            @db.VarChar(500)
-  motivo_rechazo     String?              @db.VarChar(255)
-  fecha_pedido       DateTime?            @default(now())
-  fecha_asignacion   DateTime?
-  fecha_entrega_est  DateTime?
-  fecha_entrega_real DateTime?
-  detalle_pedido     detalle_pedido[]
-  facturas           facturas[]
-  conversacion       conversaciones?
-  repartidor         usuarios?            @relation("pedidos_repartidor_idTousuarios", fields: [repartidor_id], references: [id_usuario], onDelete: Restrict, onUpdate: Restrict, map: "fk_ped_repartidor")
-  usuario            usuarios             @relation(fields: [usuario_id], references: [id_usuario], onUpdate: Restrict, map: "fk_ped_user")
-  seguimiento_pedido seguimiento_pedido[]
+  id_pedido                  Int                  @id @default(autoincrement())
+  usuario_id                 Int
+  repartidor_id              Int?
+  subtotal                   Decimal?             @default(0.00) @db.Decimal(12, 2)
+  impuesto                   Decimal?             @default(0.00) @db.Decimal(12, 2)
+  total                      Decimal?             @default(0.00) @db.Decimal(12, 2)
+  estado                     pedidos_estado?      @default(PENDIENTE)
+  direccion_entrega          String?              @db.VarChar(255)
+  notas_entrega              String?              @db.VarChar(500)
+  comprobante_pago_url       String?              @db.VarChar(500)
+  comprobante_pago_public_id String?              @db.VarChar(255)
+  nota_admin                 String?              @db.VarChar(500)
+  motivo_rechazo             String?              @db.VarChar(255)
+  fecha_pedido               DateTime?            @default(now())
+  fecha_asignacion           DateTime?
+  fecha_entrega_est          DateTime?
+  fecha_entrega_real         DateTime?
+  detalle_pedido             detalle_pedido[]
+  facturas                   facturas[]
+  conversacion               conversaciones?
+  repartidor                 usuarios?            @relation("pedidos_repartidor_idTousuarios", fields: [repartidor_id], references: [id_usuario], onDelete: Restrict, onUpdate: Restrict, map: "fk_ped_repartidor")
+  usuario                    usuarios             @relation(fields: [usuario_id], references: [id_usuario], onUpdate: Restrict, map: "fk_ped_user")
+  seguimiento_pedido         seguimiento_pedido[]
 
   @@index([usuario_id], map: "fk_ped_user")
   @@index([repartidor_id], map: "fk_ped_repartidor")
@@ -239,6 +254,8 @@ enum tipo_notificacion {
   PAGO_RECHAZADO
   NUEVO_MENSAJE
   PEDIDO_ASIGNADO
+  PEDIDO_ACEPTADO
+  PEDIDO_EN_CAMINO
 }
 
 model conversaciones {

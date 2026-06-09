@@ -114,7 +114,7 @@ const Pedido = {
         const pedido = await prisma.pedidos.findUnique({
             where: { id_pedido: Number(id) },
             include: {
-                usuario: { select: { nombre: true, email: true, numero_documento: true, telefono: true } },
+                usuario: { select: { nombre: true, email: true, numero_documento: true, telefono: true, direccion: true } },
                 detalle_pedido: {
                     orderBy: { id_detalle_pedido: 'asc' },
                     include: { producto: { select: { nombre: true, imagen_url: true } } }
@@ -130,6 +130,7 @@ const Pedido = {
             usuario_email:      pedido.usuario?.email,
             numero_documento:   pedido.usuario?.numero_documento,
             usuario_telefono:   pedido.usuario?.telefono,
+            direccion:          pedido.usuario?.direccion,
             usuario: undefined,
             detalles: pedido.detalle_pedido.map(d => ({
                 ...d,

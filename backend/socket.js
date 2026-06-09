@@ -33,6 +33,10 @@ export const configureSocket = (server) => {
       }
     }
 
+    if (userRole === 'Repartidor') {
+      socket.join('repartidores');
+    }
+
     // Chat events
     socket.on('chat:join', (conversacionId) => {
       socket.join(`chat:${conversacionId}`);
@@ -62,6 +66,12 @@ export const configureSocket = (server) => {
   });
 
   return io;
+};
+
+export const emitNuevoPedidoDisponible = (pedidoId, data) => {
+  if (io) {
+    io.to('repartidores').emit('pedido:disponible-nuevo', { pedido_id: pedidoId, ...data });
+  }
 };
 
 export default configureSocket;

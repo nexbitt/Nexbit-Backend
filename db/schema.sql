@@ -180,9 +180,35 @@ CREATE TABLE seguimiento_pedido (
 ) ENGINE=InnoDB;
 
 -- =====================================================
--- 6. FACTURAS
+-- Tabla de CONFIGURACION BANCARIA (para datos de transferencia)
 -- =====================================================
+CREATE TABLE configuracion_bancaria (
+  id_configuracion INT AUTO_INCREMENT PRIMARY KEY,
+  banco            VARCHAR(100) NOT NULL,
+  tipo_cuenta      VARCHAR(50) NOT NULL,
+  numero_cuenta    VARCHAR(50) NOT NULL,
+  titular          VARCHAR(150) NOT NULL,
+  documento        VARCHAR(30) DEFAULT NULL,
+  descripcion      VARCHAR(255) DEFAULT NULL,
+  activo           TINYINT(1) DEFAULT 1,
+  created_at       TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Insertar datos bancarios por defecto
+INSERT INTO configuracion_bancaria (banco, tipo_cuenta, numero_cuenta, titular, documento, descripcion) VALUES
+('Nequi', 'Billetera Digital', '3001234567', 'Nexbit Comercial S.A.S', 'NIT 900.123.456-7', 'Disponible 24/7'),
+('Bancolombia', 'Cuenta de Ahorros', '1234-56789-0', 'Nexbit Comercial S.A.S', 'NIT 900.123.456-7', 'Transferencia inmediata'),
+('Transfiya', 'Billetera Digital', '3001234567', 'Nexbit Comercial S.A.S', NULL, 'A través de Bre-B');
+
+-- Agregar campo comprobante_pago_public_id a pedidos
+ALTER TABLE pedidos
+  ADD COLUMN comprobante_pago_public_id VARCHAR(255) DEFAULT NULL AFTER comprobante_pago_url,
+  ADD COLUMN nota_admin VARCHAR(500) DEFAULT NULL AFTER comprobante_pago_public_id;
+
+-- =====================================================
+-- Tabla de FACTURAS
+-- =====================================================
 CREATE TABLE facturas (
     id_factura     INT           AUTO_INCREMENT PRIMARY KEY,
     pedido_id      INT           NOT NULL,

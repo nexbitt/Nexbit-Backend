@@ -81,6 +81,12 @@ const checkout = async (req, res) => {
             return pedido;
         });
 
+        // Obtener datos bancarios para mostrar al cliente
+        const cuentasBancarias = await prisma.configuracion_bancaria.findMany({
+            where: { activo: true },
+            select: { banco: true, tipo_cuenta: true, numero_cuenta: true, titular: true, documento: true, descripcion: true }
+        });
+
         const io = getIO();
         io.to('admin').emit('notificacion:nuevo-pedido', {
             pedido_id: transactionResult.id_pedido,
@@ -88,7 +94,12 @@ const checkout = async (req, res) => {
             mensaje: 'Un cliente ha realizado un nuevo pedido.'
         });
 
-        res.status(201).json({ message: "Pedido procesado con éxito", id_pedido: transactionResult.id_pedido });
+        res.status(201).json({
+            message: "Pedido procesado con éxito",
+            id_pedido: transactionResult.id_pedido,
+            datos_bancarios: cuentasBancarias,
+            total: Number(total)
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -190,8 +201,16 @@ const subirComprobante = async (req, res) => {
             }
         }
 
-        const comprobanteUrl = req.file.path;
-        const actualizado = await Pedido.updateComprobante(id, comprobanteUrl);
+        const comprobanteUrl = req.file.secure_url || req.file.url || req.file.path;
+        const comprobantePublicId = req.file.public_id || req.file.filename || null;
+        const actualizado = await prisma.pedidos.updateMany({
+            where: { id_pedido: Number(id) },
+            data: {
+                comprobante_pago_url: comprobanteUrl,
+                comprobante_pago_public_id: comprobantePublicId,
+                estado: 'EN_REVISION'
+            }
+        });
 
         if (!actualizado) return res.status(500).json({ message: "No se pudo actualizar el comprobante" });
 

@@ -17,19 +17,19 @@ cloudinary.config({
 
 // ── Definir dónde y cómo se guardan las imágenes ────────────
 const productStorage = new CloudinaryStorage({
-    cloudinary,
+    cloudinary: { v2: cloudinary },
     params: {
-        folder:         'rematespaisa/productos',   // Carpeta en tu cuenta Cloudinary
-        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'], // Extensiones permitidas
+        folder:         'rematespaisa/productos',
+        allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
         transformation: [
-            { width: 800, height: 800, crop: 'limit' }, // Máximo 800x800px (ahorra espacio)
-            { quality: 'auto' }                          // Calidad automática optimizada
+            { width: 800, height: 800, crop: 'limit' },
+            { quality: 'auto' }
         ],
     },
 });
 
 const comprobanteStorage = new CloudinaryStorage({
-    cloudinary,
+    cloudinary: { v2: cloudinary },
     params: {
         folder:         'rematespaisa/comprobantes',
         allowed_formats: ['jpg', 'jpeg', 'png'],
