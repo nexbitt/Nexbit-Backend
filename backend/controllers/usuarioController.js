@@ -192,4 +192,71 @@ const logout = (req, res) => {
     res.json({ message: 'Sesión cerrada correctamente' });
 };
 
-export default { getAll, getOne, store, update, getRoles, destroy, login, logout, getMe };
+/**
+ * POST /api/usuarios/verificar-contrasena
+ * Verifica que la contraseña actual proporcionada coincida con la del usuario autenticado.
+ * Utilizado por el frontend como paso de confirmación antes de permitir edición de datos.
+ */
+const verificarContrasena = async (req, res) => {
+    try {
+        const { password } = req.body;
+        if (!password) {
+            return res.status(400).json({ message: 'La contraseña es requerida' });
+        }
+
+        const user = await Usuario.findById(req.usuario.userId);
+        if (!user) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+
+        const valida = await bcrypt.compare(password, user.password);
+        if (!valida) {
+            return res.status(401).json({ message: 'Contraseña incorrecta', valida: false });
+        }
+
+        res.json({ message: 'Identidad confirmada', valida: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * PUT /api/usuarios/:id  (sobrescrito)
+ * Ahora requiere current_password en el body para validar la identidad
+ * antes de aplicar cambios en los datos personales.
+ */
+const updateSecure = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { current_password, ...data } = req.body;
+
+        // Verificar que el usuario autenticado sea el mismo que se actualiza
+        if (Number(id) !== req.usuario.userId) {
+            return res.status(403).json({ message: 'No puedes modificar los datos de otro usuario' });
+        }
+
+        // Validar contraseña actual obligatoriamente
+        if (!current_password) {
+            return res.status(400).json({ message: 'Debes proporcionar tu contraseña actual para guardar los cambios' });
+        }
+
+        const user = await Usuario.findById(id);
+        if (!user) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+
+        const valida = await bcrypt.compare(current_password, user.password);
+        if (!valida) {
+            return res.status(401).json({ message: 'Contraseña actual incorrecta. No se guardaron los cambios.' });
+        }
+
+        const actualizado = await Usuario.update(id, data);
+        if (!actualizado) return res.status(404).json({ message: 'No se encontró el registro para actualizar' });
+
+        res.json({ message: 'Usuario actualizado correctamente' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export default { getAll, getOne, store, update: updateSecure, getRoles, destroy, login, logout, getMe, verificarContrasena };

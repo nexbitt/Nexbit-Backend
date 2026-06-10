@@ -1,8 +1,10 @@
 import prisma from '../config/prisma.js';
 
 const Pedido = {
-    findAll: async () => {
+    findAll: async (onlyActive = true) => {
+        const where = onlyActive ? { status_pedido: 'activo' } : {};
         const rows = await prisma.pedidos.findMany({
+            where,
             orderBy: { id_pedido: 'asc' },
             include: {
                 usuario: { select: { nombre: true } },
@@ -108,6 +110,54 @@ const Pedido = {
             where: { id_pedido: Number(id) }
         });
         return result.count > 0;
+    },
+
+    softDelete: async (id) => {
+        const result = await prisma.pedidos.updateMany({
+            where: { id_pedido: Number(id) },
+            data: { status_pedido: 'eliminado_usuario' }
+        });
+        return result.count > 0;
+    },
+
+    restore: async (id) => {
+        const result = await prisma.pedidos.updateMany({
+            where: { id_pedido: Number(id) },
+            data: { status_pedido: 'activo' }
+        });
+        return result.count > 0;
+    },
+
+    findDeletedByUser: async (usuarioId) => {
+        const rows = await prisma.pedidos.findMany({
+            where: {
+                usuario_id: Number(usuarioId),
+                status_pedido: 'eliminado_usuario'
+            },
+            orderBy: { fecha_pedido: 'desc' },
+            include: {
+                seguimiento_pedido: {
+                    orderBy: { fecha: 'desc' },
+                    take: 1,
+                    select: { notas: true, estado_nuevo: true, fecha: true },
+                },
+            },
+        });
+        return rows.map(p => {
+            const events = p.seguimiento_pedido || [];
+            return {
+                ...p,
+                seguimiento_pedido: undefined,
+                fsm_estado:
+                    p.estado === 'ENTREGADO' ? 'ENTREGADO' :
+                    p.estado === 'CANCELADO' ? 'CANCELADO' :
+                    p.estado === 'ASIGNADO' || p.estado === 'EN_CAMINO' ? 'EN_REPARTO' :
+                    p.estado === 'APROBADO' && !p.repartidor_id ? 'DISPONIBLE' :
+                    p.estado === 'EN_REVISION' ? 'EN_REVISION' :
+                    p.estado === 'RECHAZADO' ? 'RECHAZADO' :
+                    p.estado,
+            };
+        });
     },
 
     findByIdWithDetails: async (id) => {

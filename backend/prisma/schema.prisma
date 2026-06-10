@@ -104,6 +104,7 @@ model pedidos {
   impuesto                   Decimal?             @default(0.00) @db.Decimal(12, 2)
   total                      Decimal?             @default(0.00) @db.Decimal(12, 2)
   estado                     pedidos_estado?      @default(PENDIENTE)
+  status_pedido              String?              @default("activo") @db.VarChar(20)
   direccion_entrega          String?              @db.VarChar(255)
   notas_entrega              String?              @db.VarChar(500)
   comprobante_pago_url       String?              @db.VarChar(500)

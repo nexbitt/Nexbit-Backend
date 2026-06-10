@@ -415,4 +415,48 @@ const enviarComentario = async (req, res) => {
     }
 };
 
-export default { getAll, getOne, checkout, store, update, destroy, getTicket, cancelar, subirComprobante, aprobarPago, rechazarPago, pedidosEnRevision, verificarPedidoActivo, enviarComentario };
+const softDelete = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.usuario.userId;
+        const pedido = await Pedido.findById(id);
+        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (pedido.usuario_id !== userId) {
+            return res.status(403).json({ message: "No puedes eliminar un pedido que no te pertenece" });
+        }
+        const eliminado = await Pedido.softDelete(id);
+        if (!eliminado) return res.status(404).json({ message: "Pedido no encontrado" });
+        res.json({ message: "Pedido movido a la papelera" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const restore = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.usuario.userId;
+        const pedido = await Pedido.findById(id);
+        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (pedido.usuario_id !== userId) {
+            return res.status(403).json({ message: "No puedes restaurar un pedido que no te pertenece" });
+        }
+        const restaurado = await Pedido.restore(id);
+        if (!restaurado) return res.status(404).json({ message: "Pedido no encontrado" });
+        res.json({ message: "Pedido restaurado de la papelera" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const getTrash = async (req, res) => {
+    try {
+        const userId = req.usuario.userId;
+        const data = await Pedido.findDeletedByUser(userId);
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export default { getAll, getOne, checkout, store, update, destroy, getTicket, cancelar, subirComprobante, aprobarPago, rechazarPago, pedidosEnRevision, verificarPedidoActivo, enviarComentario, softDelete, restore, getTrash };

@@ -90,4 +90,25 @@ router.delete('/:id', verificarToken,
     pedidoController.destroy
 );
 
+// Soft-delete (borrado lógico) para clientes
+router.put('/:id/eliminar', verificarToken, verificarRol('Cliente', 'Administrador'),
+    /*  #swagger.tags = ['Pedidos']
+        #swagger.summary = 'Mover pedido a la papelera (borrado lógico)' */
+    pedidoController.softDelete
+);
+
+// Restaurar pedido de la papelera
+router.put('/:id/restaurar', verificarToken, verificarRol('Cliente', 'Administrador'),
+    /*  #swagger.tags = ['Pedidos']
+        #swagger.summary = 'Restaurar pedido de la papelera' */
+    pedidoController.restore
+);
+
+// Listar pedidos eliminados (papelera) del usuario autenticado
+router.get('/usuario/trash', verificarToken,
+    /*  #swagger.tags = ['Pedidos']
+        #swagger.summary = 'Listar pedidos en la papelera del usuario' */
+    pedidoController.getTrash
+);
+
 export default router;

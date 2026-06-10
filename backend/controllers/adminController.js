@@ -4,11 +4,10 @@ import { getIO, emitNuevoPedidoDisponible } from '../socket.js';
 const adminController = {
     listarPedidos: async (req, res) => {
         try {
-            const { estado } = req.query;
+            const { estado, status_pedido } = req.query;
             const where = {};
-            if (estado) {
-                where.estado = estado;
-            }
+            if (estado) where.estado = estado;
+            if (status_pedido) where.status_pedido = status_pedido;
 
             const pedidos = await prisma.pedidos.findMany({
                 where,
@@ -55,6 +54,7 @@ const adminController = {
                     impuesto: Number(p.impuesto),
                     total: Number(p.total),
                     estado: p.estado,
+                    status_pedido: p.status_pedido,
                     direccion_entrega: p.direccion_entrega,
                     notas_entrega: p.notas_entrega,
                     comprobante_pago_url: p.comprobante_pago_url,

@@ -56,9 +56,15 @@ router.post('/',
     usuarioController.store
 );
 
+router.post('/verificar-contrasena', verificarToken,
+    /*  #swagger.tags = ['Usuarios']
+        #swagger.summary = 'Verificar contraseña actual del usuario autenticado' */
+    usuarioController.verificarContrasena
+);
+
 router.put('/:id', verificarToken,
     /*  #swagger.tags = ['Usuarios']
-        #swagger.summary = 'Actualizar un usuario' */
+        #swagger.summary = 'Actualizar un usuario (requiere current_password)' */
     usuarioController.update
 );
 

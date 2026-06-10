@@ -114,6 +114,7 @@ CREATE TABLE pedidos (
                            'CANCELADO',
                            'DISPONIBLE'
                        )             DEFAULT 'PENDIENTE',
+    status_pedido      VARCHAR(20)   DEFAULT 'activo',
     direccion_entrega  VARCHAR(255)  NULL,
     notas_entrega      VARCHAR(500)  NULL,
     comprobante_pago_url VARCHAR(500) NULL,
