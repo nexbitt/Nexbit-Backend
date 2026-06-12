@@ -36,6 +36,7 @@ model usuarios {
   conversaciones_admin   conversaciones[]          @relation("conversaciones_admin")
   mensajes               mensajes[]
   notificaciones         notificaciones[]
+  password_resets        password_resets[]
   rol                    roles                    @relation(fields: [rol_id], references: [id_rol], map: "fk_usuario_rol")
 
   @@index([rol_id], map: "fk_usuario_rol")
@@ -288,6 +289,19 @@ model mensajes {
 
   @@index([conversacion_id], map: "fk_msg_conv")
   @@index([remitente_id], map: "fk_msg_remitente")
+}
+
+model password_resets {
+  id_reset   Int       @id @default(autoincrement())
+  usuario_id Int
+  otp_hash   String    @db.VarChar(255)
+  expires_at DateTime
+  verified   Boolean   @default(false)
+  attempts   Int       @default(0)
+  created_at DateTime? @default(now())
+  usuario    usuarios  @relation(fields: [usuario_id], references: [id_usuario], onDelete: Cascade, map: "fk_password_resets_usuario")
+
+  @@index([usuario_id], map: "fk_password_resets_usuario")
 }
 
 model notificaciones {

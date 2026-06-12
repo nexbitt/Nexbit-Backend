@@ -12,6 +12,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const swaggerDocumentation = require('./swagger.json');
 
+import authRoutes from './routes/authRoutes.js';
 import usuarioRoutes from './routes/usuarioRoutes.js';
 import rolRoutes from './routes/rolRoutes.js';
 import categoriaRoutes from './routes/categoriaRoutes.js';
@@ -74,6 +75,7 @@ app.use(cookieParser()); // Lee cookies del request
 app.use('/doc', swaggerUI.serve, swaggerUI.setup(swaggerDocumentation));
 
 // ─── RUTAS ───────────────────────────────────────────────────────────────────
+app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/roles', rolRoutes);
 app.use('/api/categorias', categoriaRoutes);
