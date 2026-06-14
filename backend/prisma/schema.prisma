@@ -31,6 +31,8 @@ model usuarios {
   movimientos_inventario movimientos_inventario[]
   pedidos_repartidor     pedidos[]                @relation("pedidos_repartidor_idTousuarios")
   pedidos                pedidos[]
+  pedidos_admin_operador pedidos[]                @relation("pedidos_admin_operador")
+  seguimiento_operador   seguimiento_pedido[]     @relation("seguimiento_admin_operador")
   seguimiento_pedido     seguimiento_pedido[]
   conversaciones_cliente conversaciones[]          @relation("conversaciones_usuario")
   conversaciones_admin   conversaciones[]          @relation("conversaciones_admin")
@@ -112,6 +114,9 @@ model pedidos {
   comprobante_pago_public_id String?              @db.VarChar(255)
   nota_admin                 String?              @db.VarChar(500)
   motivo_rechazo             String?              @db.VarChar(255)
+  simulado_por_admin         Boolean?             @default(false)
+  admin_id_operador          Int?
+  auditoria_nota             String?              @db.VarChar(500)
   fecha_pedido               DateTime?            @default(now())
   fecha_asignacion           DateTime?
   fecha_entrega_est          DateTime?
@@ -121,10 +126,12 @@ model pedidos {
   conversacion               conversaciones?
   repartidor                 usuarios?            @relation("pedidos_repartidor_idTousuarios", fields: [repartidor_id], references: [id_usuario], onDelete: Restrict, onUpdate: Restrict, map: "fk_ped_repartidor")
   usuario                    usuarios             @relation(fields: [usuario_id], references: [id_usuario], onUpdate: Restrict, map: "fk_ped_user")
+  admin_operador             usuarios?            @relation("pedidos_admin_operador", fields: [admin_id_operador], references: [id_usuario], onDelete: SetNull, onUpdate: Restrict, map: "fk_ped_admin_operador")
   seguimiento_pedido         seguimiento_pedido[]
 
   @@index([usuario_id], map: "fk_ped_user")
   @@index([repartidor_id], map: "fk_ped_repartidor")
+  @@index([admin_id_operador], map: "fk_ped_admin_operador")
 }
 
 model detalle_pedido {
@@ -184,18 +191,23 @@ model movimientos_inventario {
 }
 
 model seguimiento_pedido {
-  id_seguimiento  Int                                 @id @default(autoincrement())
-  pedido_id       Int
-  estado_anterior seguimiento_pedido_estado_anterior?
-  estado_nuevo    seguimiento_pedido_estado_nuevo
-  cambiado_por    Int
-  notas           String?                             @db.VarChar(500)
-  fecha           DateTime?                           @default(now())
-  pedidos         pedidos                             @relation(fields: [pedido_id], references: [id_pedido], onDelete: Cascade, onUpdate: Restrict, map: "fk_seg_pedido")
-  usuario         usuarios                            @relation(fields: [cambiado_por], references: [id_usuario], onUpdate: Restrict, map: "fk_seg_usuario")
+  id_seguimiento           Int                                 @id @default(autoincrement())
+  pedido_id                Int
+  estado_anterior          seguimiento_pedido_estado_anterior?
+  estado_nuevo             seguimiento_pedido_estado_nuevo
+  cambiado_por             Int
+  notas                    String?                             @db.VarChar(500)
+  modificado_en_simulacion Boolean?                            @default(false)
+  admin_id_operador        Int?
+  descripcion_cambio       String?                             @db.VarChar(500)
+  fecha                    DateTime?                           @default(now())
+  pedidos                  pedidos                             @relation(fields: [pedido_id], references: [id_pedido], onDelete: Cascade, onUpdate: Restrict, map: "fk_seg_pedido")
+  usuario                  usuarios                            @relation(fields: [cambiado_por], references: [id_usuario], onUpdate: Restrict, map: "fk_seg_usuario")
+  admin_operador           usuarios?                           @relation("seguimiento_admin_operador", fields: [admin_id_operador], references: [id_usuario], onDelete: SetNull, onUpdate: Restrict, map: "fk_seg_admin_operador")
 
   @@index([pedido_id], map: "fk_seg_pedido")
   @@index([cambiado_por], map: "fk_seg_usuario")
+  @@index([admin_id_operador], map: "fk_seg_admin_operador")
 }
 
 enum EstadoFactura {

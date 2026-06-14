@@ -28,6 +28,7 @@ import repartoRoutes from './routes/repartoRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import bancosRoutes from './routes/bancosRoutes.js';
+import simulacionRoutes from './routes/simulacionRoutes.js';
 
 const app = express();
 
@@ -91,6 +92,7 @@ app.use('/api/reparto', repartoRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/bancos', bancosRoutes);
+app.use('/api/simulacion', simulacionRoutes);
 
 // ─── MANEJO DE ERRORES ───────────────────────────────────────────────────────
 app.use((err, req, res, next) => {

@@ -119,6 +119,9 @@ CREATE TABLE pedidos (
     notas_entrega      VARCHAR(500)  NULL,
     comprobante_pago_url VARCHAR(500) NULL,
     motivo_rechazo     VARCHAR(255)  NULL,
+    simulado_por_admin  BOOLEAN       DEFAULT FALSE,
+    admin_id_operador   INT           NULL,
+    auditoria_nota      VARCHAR(500)  NULL,
     fecha_pedido       DATETIME(3)   DEFAULT CURRENT_TIMESTAMP(3),
     fecha_asignacion   DATETIME(3)   NULL,
     fecha_entrega_est  DATETIME(3)   NULL,
@@ -126,6 +129,8 @@ CREATE TABLE pedidos (
     CONSTRAINT fk_ped_user        FOREIGN KEY (usuario_id)
         REFERENCES usuarios(id_usuario),
     CONSTRAINT fk_ped_repartidor  FOREIGN KEY (repartidor_id)
+        REFERENCES usuarios(id_usuario),
+    CONSTRAINT fk_ped_admin_operador FOREIGN KEY (admin_id_operador)
         REFERENCES usuarios(id_usuario)
 ) ENGINE=InnoDB;
 
@@ -171,12 +176,17 @@ CREATE TABLE seguimiento_pedido (
                         'ENTREGADO',
                         'CANCELADO'
                     )            NOT NULL,
-    cambiado_por    INT          NOT NULL,
-    notas           VARCHAR(500),
-    fecha           DATETIME(3)  DEFAULT CURRENT_TIMESTAMP(3),
+    cambiado_por            INT          NOT NULL,
+    notas                   VARCHAR(500),
+    modificado_en_simulacion BOOLEAN      DEFAULT FALSE,
+    admin_id_operador       INT          NULL,
+    descripcion_cambio      VARCHAR(500) NULL,
+    fecha                   DATETIME(3)  DEFAULT CURRENT_TIMESTAMP(3),
     CONSTRAINT fk_seg_pedido FOREIGN KEY (pedido_id)
         REFERENCES pedidos(id_pedido) ON DELETE CASCADE,
     CONSTRAINT fk_seg_usuario FOREIGN KEY (cambiado_por)
+        REFERENCES usuarios(id_usuario),
+    CONSTRAINT fk_seg_admin_operador FOREIGN KEY (admin_id_operador)
         REFERENCES usuarios(id_usuario)
 ) ENGINE=InnoDB;
 

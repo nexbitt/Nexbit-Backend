@@ -58,14 +58,19 @@ const Pedido = {
     },
 
     create: async (data) => {
-        const { usuario_id, subtotal, impuesto, total, estado } = data;
+        const { usuario_id, subtotal, impuesto, total, estado, direccion_entrega, notas_entrega, simulado_por_admin, admin_id_operador, auditoria_nota } = data;
         const result = await prisma.pedidos.create({
             data: {
                 usuario_id: Number(usuario_id),
                 subtotal: subtotal || 0,
                 impuesto: impuesto || 0,
                 total: total || 0,
-                estado: estado || 'PENDIENTE'
+                estado: estado || 'PENDIENTE',
+                direccion_entrega: direccion_entrega || null,
+                notas_entrega: notas_entrega || null,
+                simulado_por_admin: simulado_por_admin || false,
+                admin_id_operador: admin_id_operador ? Number(admin_id_operador) : null,
+                auditoria_nota: auditoria_nota || null
             }
         });
         return result.id_pedido;
