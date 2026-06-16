@@ -27,7 +27,9 @@ const store = async (req, res) => {
     try {
         const { nombre, descripcion } = req.body;
         if (!nombre) return res.status(400).json({ message: "Faltan campos obligatorios" });
-        const id = await Categoria.create({ nombre, descripcion });
+        const sanitizedNombre = nombre.trim();
+        if (sanitizedNombre.length < 3) return res.status(400).json({ message: "El nombre debe tener al menos 3 caracteres" });
+        const id = await Categoria.create({ nombre: sanitizedNombre, descripcion: descripcion?.trim() });
         res.status(201).json({ message: "Categoría creada con éxito", id_categoria: id });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -37,7 +39,13 @@ const store = async (req, res) => {
 const update = async (req, res) => {
     try {
         const { id } = req.params;
-        const actualizado = await Categoria.update(id, req.body);
+        const data = { ...req.body };
+        if (data.nombre) {
+            data.nombre = data.nombre.trim();
+            if (data.nombre.length < 3) return res.status(400).json({ message: "El nombre debe tener al menos 3 caracteres" });
+        }
+        if (data.descripcion) data.descripcion = data.descripcion.trim();
+        const actualizado = await Categoria.update(id, data);
         if (!actualizado) return res.status(404).json({ message: "Categoría no encontrada para actualizar" });
         res.json({ message: "Categoría actualizada correctamente" });
     } catch (error) {

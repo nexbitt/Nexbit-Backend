@@ -86,15 +86,21 @@ const getOne = async (req, res) => {
 
 const store = async (req, res) => {
     try {
-        const { categoria_id, nombre, precio_compra, precio_venta } = req.body;
-        if (!categoria_id || !nombre || precio_compra === undefined || precio_venta === undefined) {
-            return res.status(400).json({ message: "La categoría, nombre y precios son obligatorios" });
+        const { nombre } = req.body;
+        const sanitizedNombre = nombre?.trim();
+        if (!sanitizedNombre || sanitizedNombre.length < 3) {
+            return res.status(400).json({ message: "El nombre debe tener al menos 3 caracteres" });
+        }
+
+        const { categoria_id, precio_compra, precio_venta } = req.body;
+        if (!categoria_id || precio_compra === undefined || precio_venta === undefined) {
+            return res.status(400).json({ message: "La categoría y precios son obligatorios" });
         }
 
         // req.file.path contiene la URL pública de Cloudinary
         const imagen_url = req.file ? (req.file.path || req.file.secure_url || req.file.url) : null;
 
-        const id = await Producto.create({ ...req.body, imagen_url });
+        const id = await Producto.create({ ...req.body, nombre: sanitizedNombre, imagen_url });
         res.status(201).json({ message: "Producto creado con éxito", id_producto: id });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -124,7 +130,12 @@ const update = async (req, res) => {
             }
         }
 
-        const actualizado = await Producto.update(id, { ...req.body, imagen_url });
+        const updateData = { ...req.body, imagen_url };
+        if (updateData.nombre) {
+            updateData.nombre = updateData.nombre.trim();
+            if (updateData.nombre.length < 3) return res.status(400).json({ message: "El nombre debe tener al menos 3 caracteres" });
+        }
+        const actualizado = await Producto.update(id, updateData);
         if (!actualizado) return res.status(404).json({ message: "Producto no encontrado para actualizar" });
         res.json({ message: "Producto actualizado correctamente" });
     } catch (error) {

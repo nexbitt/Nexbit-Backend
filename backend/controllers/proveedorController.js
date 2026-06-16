@@ -27,7 +27,9 @@ const store = async (req, res) => {
     try {
         const { nit, nombre, telefono, correo, direccion } = req.body;
         if (!nit || !nombre) return res.status(400).json({ message: "NIT y Nombre son obligatorios" });
-        const id = await Proveedor.create({ nit, nombre, telefono, correo, direccion });
+        const sanitizedNombre = nombre.trim();
+        if (sanitizedNombre.length < 3) return res.status(400).json({ message: "El nombre debe tener al menos 3 caracteres" });
+        const id = await Proveedor.create({ nit: nit.trim(), nombre: sanitizedNombre, telefono: telefono?.trim(), correo: correo?.trim(), direccion: direccion?.trim() });
         res.status(201).json({ message: "Proveedor creado con éxito", id_proveedor: id });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -37,7 +39,16 @@ const store = async (req, res) => {
 const update = async (req, res) => {
     try {
         const { id } = req.params;
-        const actualizado = await Proveedor.update(id, req.body);
+        const data = { ...req.body };
+        if (data.nombre) {
+            data.nombre = data.nombre.trim();
+            if (data.nombre.length < 3) return res.status(400).json({ message: "El nombre debe tener al menos 3 caracteres" });
+        }
+        if (data.nit) data.nit = data.nit.trim();
+        if (data.telefono) data.telefono = data.telefono.trim();
+        if (data.correo) data.correo = data.correo.trim();
+        if (data.direccion) data.direccion = data.direccion.trim();
+        const actualizado = await Proveedor.update(id, data);
         if (!actualizado) return res.status(404).json({ message: "Proveedor no encontrado para actualizar" });
         res.json({ message: "Proveedor actualizado correctamente" });
     } catch (error) {
