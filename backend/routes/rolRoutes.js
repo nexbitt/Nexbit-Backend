@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import rolController from '../controllers/rolController.js';
-import { verificarToken } from '../middleware/authMiddleware.js';
+import { verificarToken, verificarRol } from '../middleware/authMiddleware.js';
 
 router.get('/', verificarToken,
     /*  #swagger.tags = ['Roles']
@@ -15,22 +15,10 @@ router.get('/:id', verificarToken,
     rolController.getOne
 );
 
-router.post('/', verificarToken,
+router.put('/:id', verificarToken, verificarRol('Administrador'),
     /*  #swagger.tags = ['Roles']
-        #swagger.summary = 'Crear un nuevo rol' */
-    rolController.store
-);
-
-router.put('/:id', verificarToken,
-    /*  #swagger.tags = ['Roles']
-        #swagger.summary = 'Actualizar un rol' */
+        #swagger.summary = 'Actualizar un rol (solo Administrador)' */
     rolController.update
-);
-
-router.delete('/:id', verificarToken,
-    /*  #swagger.tags = ['Roles']
-        #swagger.summary = 'Eliminar un rol' */
-    rolController.destroy
 );
 
 export default router;
