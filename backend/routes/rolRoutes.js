@@ -15,6 +15,12 @@ router.get('/:id', verificarToken,
     rolController.getOne
 );
 
+router.post('/', verificarToken, verificarRol('Administrador'),
+    /*  #swagger.tags = ['Roles']
+        #swagger.summary = 'Crear un nuevo rol (solo Administrador)' */
+    rolController.store
+);
+
 router.put('/:id', verificarToken, verificarRol('Administrador'),
     /*  #swagger.tags = ['Roles']
         #swagger.summary = 'Actualizar un rol (solo Administrador)' */

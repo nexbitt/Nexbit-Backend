@@ -11,25 +11,25 @@ export const getVentas = async (req, res) => {
             SELECT 
                 f.numero_factura                                AS Factura_No,
                 DATE_FORMAT(f.fecha_emision, '%d/%m/%Y')        AS Fecha_Venta,
-                u.nombre                                        AS Cliente,
-                u.numero_documento                              AS Documento,
-                cat.nombre                                      AS Categoria,
-                p.nombre                                        AS Producto,
-                dp.cantidad                                     AS Cant,
-                dp.precio_unitario                              AS Precio_Venta_COP,
-                dp.subtotal                                     AS Subtotal_Item,
-                ped.subtotal                                    AS Subtotal_Pedido,
-                ped.impuesto                                    AS IVA,
+                IFNULL(u.nombre, 'Cliente Eliminado')           AS Cliente,
+                IFNULL(u.numero_documento, '\u2014')                 AS Documento,
+                IFNULL(cat.nombre, 'Sin Categor\u00eda')              AS Categoria,
+                IFNULL(p.nombre, 'Producto Eliminado')          AS Producto,
+                IFNULL(dp.cantidad, 0)                          AS Cant,
+                IFNULL(dp.precio_unitario, 0)                   AS Precio_Venta_COP,
+                IFNULL(dp.subtotal, 0)                          AS Subtotal_Item,
+                IFNULL(ped.subtotal, 0)                         AS Subtotal_Pedido,
+                IFNULL(ped.impuesto, 0)                         AS IVA,
                 f.total                                         AS Total_Factura,
                 f.estado                                        AS Estado_Pago,
                 IFNULL(rep.nombre, 'Sin asignar')               AS Repartidor
             FROM facturas f
-            INNER JOIN pedidos ped       ON f.pedido_id       = ped.id_pedido
-            INNER JOIN usuarios u        ON ped.usuario_id    = u.id_usuario
-            LEFT  JOIN usuarios rep      ON ped.repartidor_id = rep.id_usuario
-            INNER JOIN detalle_pedido dp ON ped.id_pedido     = dp.pedido_id
-            INNER JOIN productos p       ON dp.producto_id    = p.id_producto
-            INNER JOIN categorias cat    ON p.categoria_id    = cat.id_categoria
+            LEFT JOIN pedidos ped        ON f.pedido_id       = ped.id_pedido
+            LEFT JOIN usuarios u         ON ped.usuario_id    = u.id_usuario
+            LEFT JOIN usuarios rep       ON ped.repartidor_id = rep.id_usuario
+            LEFT JOIN detalle_pedido dp  ON ped.id_pedido     = dp.pedido_id
+            LEFT JOIN productos p        ON dp.producto_id    = p.id_producto
+            LEFT JOIN categorias cat     ON p.categoria_id    = cat.id_categoria
             WHERE f.estado != 'ANULADA'
             ORDER BY f.fecha_emision DESC
         `);
@@ -58,9 +58,7 @@ export const getInventario = async (req, res) => {
                 p.precio_compra                                             AS Costo_Unit_COP,
                 p.precio_venta                                              AS PVP_COP,
                 (p.precio_venta - p.precio_compra)                          AS Margen_Ganancia,
-                ROUND(
-                    ((p.precio_venta - p.precio_compra) / p.precio_compra) * 100, 2
-                )                                                           AS Margen_Pct,
+                ROUND(((p.precio_venta - p.precio_compra) / p.precio_compra) * 100, 2) AS Margen_Pct,
                 (p.stock_actual * p.precio_compra)                          AS Valor_Inventario_Costo,
                 (p.stock_actual * (p.precio_venta - p.precio_compra))       AS Ganancia_Potencial
             FROM productos p
@@ -83,9 +81,9 @@ export const getSeguridad = async (req, res) => {
                 u.id_usuario                                        AS ID_User,
                 u.nombre                                            AS Nombre_Usuario,
                 u.email                                             AS Email_Login,
-                u.telefono                                          AS Telefono,
-                r.nombre                                            AS Rol,
-                r.descripcion                                       AS Permisos_Asignados,
+                IFNULL(u.telefono, '\u2014')                             AS Telefono,
+                IFNULL(r.nombre, 'SIN ROL ASIGNADO')                AS Rol,
+                IFNULL(r.descripcion, 'Cuenta en estado cr\u00edtico')   AS Permisos_Asignados,
                 CASE 
                     WHEN u.activo = TRUE THEN 'ACTIVO' 
                     ELSE 'INACTIVO' 
@@ -93,7 +91,7 @@ export const getSeguridad = async (req, res) => {
                 DATE_FORMAT(u.created_at, '%d/%m/%Y %H:%i')         AS Fecha_Registro,
                 DATE_FORMAT(u.updated_at, '%d/%m/%Y %H:%i')         AS Ultima_Modificacion
             FROM usuarios u
-            INNER JOIN roles r ON u.id_rol = r.id_rol
+            LEFT JOIN roles r ON u.rol_id = r.id_rol
             ORDER BY r.nombre ASC, u.activo DESC
         `);
         res.json(rows);
@@ -136,32 +134,29 @@ export const getRepartidores = async (req, res) => {
             SELECT 
                 rep.id_usuario                                          AS ID_Repartidor,
                 rep.nombre                                              AS Repartidor,
-                rep.telefono                                            AS Telefono,
-                ped.id_pedido                                           AS ID_Pedido,
-                u.nombre                                                AS Cliente,
-                ped.direccion_entrega                                   AS Direccion_Entrega,
-                ped.estado                                              AS Estado_Pedido,
-                DATE_FORMAT(ped.fecha_asignacion,    '%d/%m/%Y %H:%i') AS Fecha_Asignacion,
-                DATE_FORMAT(ped.fecha_entrega_est,   '%d/%m/%Y %H:%i') AS Entrega_Estimada,
-                DATE_FORMAT(ped.fecha_entrega_real,  '%d/%m/%Y %H:%i') AS Entrega_Real,
+                IFNULL(rep.telefono, '\u2014')                               AS Telefono,
+                IFNULL(ped.id_pedido, '\u2014')                              AS ID_Pedido,
+                IFNULL(u.nombre, '\u2014')                                   AS Cliente,
+                IFNULL(ped.direccion_entrega, '\u2014')                      AS Direccion_Entrega,
+                IFNULL(ped.estado, 'SIN ASIGNACIONES')                  AS Estado_Pedido,
+                IFNULL(DATE_FORMAT(ped.fecha_asignacion, '%d/%m/%Y %H:%i'), '\u2014') AS Fecha_Asignacion,
+                IFNULL(DATE_FORMAT(ped.fecha_entrega_est, '%d/%m/%Y %H:%i'), '\u2014') AS Entrega_Estimada,
+                IFNULL(DATE_FORMAT(ped.fecha_entrega_real, '%d/%m/%Y %H:%i'), '\u2014') AS Entrega_Real,
                 CASE
-                    WHEN ped.fecha_entrega_real IS NULL                         THEN 'PENDIENTE'
-                    WHEN ped.fecha_entrega_real <= ped.fecha_entrega_est        THEN 'A TIEMPO'
-                    ELSE                                                             'TARDE'
+                    WHEN ped.id_pedido IS NULL THEN 'SIN TRABAJO'
+                    WHEN ped.fecha_entrega_real IS NULL THEN 'PENDIENTE'
+                    WHEN ped.fecha_entrega_real <= ped.fecha_entrega_est THEN 'A TIEMPO'
+                    ELSE 'TARDE'
                 END                                                     AS Cumplimiento,
-                ped.total                                               AS Total_Pedido,
-                GROUP_CONCAT(
-                    p.nombre, ' x', dp.cantidad
-                    ORDER BY p.nombre
-                    SEPARATOR ' | '
-                )                                                       AS Productos
+                IFNULL(ped.total, 0)                                    AS Total_Pedido,
+                IFNULL(GROUP_CONCAT(p.nombre, ' x', dp.cantidad ORDER BY p.nombre SEPARATOR ' | '), 'Sin productos') AS Productos
             FROM usuarios rep
-            INNER JOIN roles r           ON rep.id_rol        = r.id_rol        AND r.nombre = 'Repartidor'
-            LEFT  JOIN pedidos ped       ON ped.repartidor_id = rep.id_usuario
-            LEFT  JOIN usuarios u        ON ped.usuario_id    = u.id_usuario
-            LEFT  JOIN detalle_pedido dp ON ped.id_pedido     = dp.pedido_id
-            LEFT  JOIN productos p       ON dp.producto_id    = p.id_producto
-            GROUP BY
+            INNER JOIN roles r           ON rep.rol_id = r.id_rol AND r.nombre = 'Repartidor'
+            LEFT JOIN pedidos ped        ON ped.repartidor_id = rep.id_usuario
+            LEFT JOIN usuarios u         ON ped.usuario_id = u.id_usuario
+            LEFT JOIN detalle_pedido dp  ON ped.id_pedido = dp.pedido_id
+            LEFT JOIN productos p        ON dp.producto_id = p.id_producto
+            GROUP BY 
                 rep.id_usuario, rep.nombre, rep.telefono,
                 ped.id_pedido, u.nombre, ped.direccion_entrega,
                 ped.estado, ped.fecha_asignacion,

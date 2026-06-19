@@ -23,6 +23,17 @@ const getOne = async (req, res) => {
     }
 };
 
+const store = async (req, res) => {
+    try {
+        const { nombre, descripcion } = req.body;
+        if (!nombre) return res.status(400).json({ message: "El nombre es obligatorio" });
+        const id = await Rol.create({ nombre, descripcion });
+        res.status(201).json({ message: "Rol creado con éxito", id_rol: id });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 const update = async (req, res) => {
     try {
         const { id } = req.params;
