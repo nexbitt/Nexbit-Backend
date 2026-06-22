@@ -107,9 +107,51 @@ const checkout = async (req, res) => {
 
 const store = async (req, res) => {
     try {
-        const { usuario_id } = req.body;
+        const { usuario_id, comprobante_pago_url } = req.body;
         if (!usuario_id) return res.status(400).json({ message: "El ID del usuario es obligatorio" });
-        const id = await Pedido.create(req.body);
+
+        const data = { ...req.body };
+        if (comprobante_pago_url) {
+            data.estado = 'EN_REVISION';
+        } else {
+            data.estado = 'PENDIENTE';
+        }
+        const id = await Pedido.create(data);
+
+        if (comprobante_pago_url) {
+            await prisma.seguimiento_pedido.create({
+                data: {
+                    pedido_id: id,
+                    estado_anterior: null,
+                    estado_nuevo: 'EN_REVISION',
+                    cambiado_por: Number(usuario_id),
+                    notas: 'Administrador creó pedido con comprobante de pago'
+                }
+            });
+
+            const admins = await prisma.usuarios.findMany({
+                where: { rol_id: 1, activo: true },
+                select: { id_usuario: true }
+            });
+            for (const admin of admins) {
+                await prisma.notificaciones.create({
+                    data: {
+                        usuario_id: admin.id_usuario,
+                        tipo: 'COMPROBANTE_SUBIDO',
+                        titulo: `Nuevo comprobante de pago - Pedido #${id}`,
+                        mensaje: `Se ha creado el pedido #${id} con comprobante de pago. Revisa y aprueba el pago.`,
+                        pedido_id: id
+                    }
+                });
+            }
+            const io = getIO();
+            io.to('admin').emit('notificacion:nuevo-comprobante', {
+                pedido_id: id,
+                titulo: `Nuevo comprobante de pago - Pedido #${id}`,
+                mensaje: 'Se ha creado un pedido con comprobante de pago para revisión.'
+            });
+        }
+
         res.status(201).json({ message: "Pedido creado con éxito", id_pedido: id });
     } catch (error) {
         res.status(500).json({ error: error.message });

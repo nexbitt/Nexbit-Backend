@@ -4,10 +4,41 @@ import { getIO, emitNuevoPedidoDisponible } from '../socket.js';
 const adminController = {
     listarPedidos: async (req, res) => {
         try {
-            const { estado, status_pedido } = req.query;
+            const { estado, status_pedido, search, filterFecha } = req.query;
             const where = {};
             if (estado) where.estado = estado;
             if (status_pedido) where.status_pedido = status_pedido;
+
+            if (search) {
+                const searchConditions = [
+                    { usuario: { nombre: { contains: search } } },
+                    { usuario: { numero_documento: { contains: search } } },
+                ];
+                const searchId = parseInt(search, 10);
+                if (!isNaN(searchId)) {
+                    searchConditions.push({ id_pedido: searchId });
+                }
+                where.OR = searchConditions;
+            }
+
+            if (filterFecha) {
+                const now = new Date();
+                let startDate;
+                switch (filterFecha) {
+                    case 'today':
+                        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                        break;
+                    case 'week':
+                        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                        break;
+                    case 'month':
+                        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                        break;
+                }
+                if (startDate) {
+                    where.fecha_pedido = { gte: startDate };
+                }
+            }
 
             const pedidos = await prisma.pedidos.findMany({
                 where,

@@ -49,4 +49,4 @@ const update = async (req, res) => {
     }
 };
 
-export default { getAll, getOne, update };
+export default { getAll, getOne, store, update };
