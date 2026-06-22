@@ -4,7 +4,7 @@
  */
 import express from 'express';
 const router = express.Router();
-import { getVentas, getInventario, getSeguridad, getCarritos, getRepartidores } from '../controllers/reportesController.js';
+import { getVentas, getInventario, getSeguridad, getCarritos, getRepartidores, getVentasKpis, getInventarioKpis, getSeguridadKpis, getCarritosKpis, getRepartidoresKpis } from '../controllers/reportesController.js';
 import { verificarToken } from '../middleware/authMiddleware.js';
 
 router.get('/ventas', verificarToken,
@@ -36,5 +36,11 @@ router.get('/repartidores', verificarToken,
         #swagger.summary = 'Reporte de repartidores' */
     getRepartidores
 );
+
+router.get('/ventas/kpis', verificarToken, getVentasKpis);
+router.get('/inventario/kpis', verificarToken, getInventarioKpis);
+router.get('/seguridad/kpis', verificarToken, getSeguridadKpis);
+router.get('/carritos/kpis', verificarToken, getCarritosKpis);
+router.get('/repartidores/kpis', verificarToken, getRepartidoresKpis);
 
 export default router;

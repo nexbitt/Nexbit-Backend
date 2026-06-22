@@ -123,7 +123,11 @@ const obtenerHistorial = async (req, res) => {
     }
 
     const pedidos = await prisma.pedidos.findMany({
-      where: { id_pedido: { in: pedidoIds } },
+      where: {
+        id_pedido: { in: pedidoIds },
+        ...(filtro === 'entregados' ? { estado: 'ENTREGADO' } : {}),
+        ...(filtro === 'cancelados' ? { estado: 'CANCELADO' } : {}),
+      },
       include: {
         usuario: { select: { nombre: true } },
         detalle_pedido: {
@@ -160,11 +164,6 @@ const obtenerHistorial = async (req, res) => {
           ultimo_seguimiento: p.seguimiento_pedido[0]?.notas || '',
           fecha_entrega: p.fecha_entrega_real,
         };
-      })
-      .filter((p) => {
-        if (filtro === 'entregados') return p.estado_fsm === 'ENTREGADO';
-        if (filtro === 'cancelados') return p.estado_fsm === 'CANCELADO';
-        return true;
       });
 
     res.json(historial);
@@ -394,6 +393,44 @@ const reportarProblema = async (req, res) => {
   }
 };
 
+const obtenerStats = async (req, res) => {
+  const repartidorId = req.usuario.userId;
+  try {
+    const [disponibles, activo, interacciones] = await Promise.all([
+      prisma.pedidos.count({
+        where: { repartidor_id: null, estado: { in: ['APROBADO'] } },
+      }),
+      prisma.pedidos.count({
+        where: { repartidor_id: repartidorId, estado: { in: ['ASIGNADO', 'EN_CAMINO'] } },
+      }),
+      prisma.seguimiento_pedido.findMany({
+        where: { cambiado_por: repartidorId },
+        orderBy: { fecha: 'desc' },
+        distinct: ['pedido_id'],
+        select: { pedido_id: true },
+      }),
+    ]);
+
+    const pedidoIds = interacciones.map((s) => s.pedido_id);
+    let entregados = 0, cancelados = 0;
+    if (pedidoIds.length > 0) {
+      const pedidos = await prisma.pedidos.findMany({
+        where: { id_pedido: { in: pedidoIds } },
+        select: { id_pedido: true, estado: true },
+      });
+      for (const p of pedidos) {
+        if (p.estado === 'ENTREGADO') entregados++;
+        else if (p.estado === 'CANCELADO') cancelados++;
+      }
+    }
+
+    res.json({ disponibles, activo, entregados, cancelados });
+  } catch (error) {
+    console.error('Error al obtener stats:', error);
+    res.status(500).json({ error: 'Error obteniendo estadísticas' });
+  }
+};
+
 const zonasCalientes = async (req, res) => {
   try {
     const pedidosRecientes = await prisma.pedidos.findMany({
@@ -434,6 +471,7 @@ export default {
   obtenerDisponibles,
   obtenerActivo,
   obtenerHistorial,
+  obtenerStats,
   tomarPedido,
   marcarEnCamino,
   confirmarEntrega,

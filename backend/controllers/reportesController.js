@@ -168,3 +168,121 @@ export const getRepartidores = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// ── KPIs ────────────────────────────────────────────────────────────────────────
+export const getVentasKpis = async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT
+                COUNT(DISTINCT f.numero_factura) AS total_tickets,
+                COALESCE(SUM(f.total), 0) AS total_ingresos,
+                COALESCE(AVG(f.total), 0) AS promedio_ticket
+            FROM facturas f
+            WHERE f.estado != 'ANULADA'
+        `);
+        const [top] = await db.query(`
+            SELECT p.nombre AS producto, SUM(dp.cantidad) AS total_uds
+            FROM facturas f
+            JOIN pedidos ped ON f.pedido_id = ped.id_pedido
+            JOIN detalle_pedido dp ON ped.id_pedido = dp.pedido_id
+            JOIN productos p ON dp.producto_id = p.id_producto
+            WHERE f.estado != 'ANULADA'
+            GROUP BY p.nombre
+            ORDER BY total_uds DESC
+            LIMIT 6
+        `);
+        res.json({ ...rows[0], top_productos: top });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getInventarioKpis = async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT
+                COUNT(*) AS total_productos,
+                SUM(CASE WHEN p.stock_actual = 0 THEN 1 ELSE 0 END) AS agotados,
+                SUM(CASE WHEN p.stock_actual > 0 AND p.stock_actual <= p.stock_minimo THEN 1 ELSE 0 END) AS stock_bajo,
+                SUM(CASE WHEN p.stock_actual > p.stock_minimo THEN 1 ELSE 0 END) AS ok,
+                COALESCE(SUM(p.stock_actual * p.precio_compra), 0) AS valor_total_costo,
+                COALESCE(SUM(p.stock_actual * (p.precio_venta - p.precio_compra)), 0) AS ganancia_potencial
+            FROM productos p
+            WHERE p.activo = TRUE
+        `);
+        const [top] = await db.query(`
+            SELECT p.nombre AS producto,
+                ROUND(((p.precio_venta - p.precio_compra) / p.precio_compra) * 100, 2) AS margen_pct
+            FROM productos p
+            WHERE p.activo = TRUE
+            ORDER BY margen_pct DESC
+            LIMIT 6
+        `);
+        res.json({ ...rows[0], top_margen: top });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getSeguridadKpis = async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT
+                COUNT(*) AS total_usuarios,
+                SUM(CASE WHEN u.activo = TRUE THEN 1 ELSE 0 END) AS activos,
+                SUM(CASE WHEN u.activo = FALSE THEN 1 ELSE 0 END) AS inactivos
+            FROM usuarios u
+        `);
+        const [porRol] = await db.query(`
+            SELECT r.nombre AS rol, COUNT(*) AS cantidad
+            FROM usuarios u
+            LEFT JOIN roles r ON u.rol_id = r.id_rol
+            GROUP BY r.nombre
+            ORDER BY cantidad DESC
+        `);
+        res.json({ ...rows[0], por_rol: porRol });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getCarritosKpis = async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT
+                COUNT(*) AS total_items,
+                COALESCE(SUM(car.cantidad * p.precio_venta), 0) AS valor_potencial,
+                SUM(CASE WHEN p.stock_actual = 0 OR p.stock_actual < car.cantidad THEN 1 ELSE 0 END) AS con_problema_stock
+            FROM carrito car
+            INNER JOIN productos p ON car.producto_id = p.id_producto
+        `);
+        res.json(rows[0]);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const getRepartidoresKpis = async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT
+                COUNT(CASE WHEN ped.id_pedido IS NOT NULL THEN 1 END) AS total_pedidos,
+                COUNT(CASE WHEN ped.fecha_entrega_real IS NOT NULL AND ped.fecha_entrega_real <= ped.fecha_entrega_est THEN 1 END) AS a_tiempo,
+                COUNT(CASE WHEN ped.fecha_entrega_real IS NOT NULL AND ped.fecha_entrega_real > ped.fecha_entrega_est THEN 1 END) AS con_retraso
+            FROM usuarios rep
+            INNER JOIN roles r ON rep.rol_id = r.id_rol AND r.nombre = 'Repartidor'
+            LEFT JOIN pedidos ped ON ped.repartidor_id = rep.id_usuario
+        `);
+        const [porRep] = await db.query(`
+            SELECT rep.nombre AS repartidor, COUNT(ped.id_pedido) AS cantidad
+            FROM usuarios rep
+            INNER JOIN roles r ON rep.rol_id = r.id_rol AND r.nombre = 'Repartidor'
+            LEFT JOIN pedidos ped ON ped.repartidor_id = rep.id_usuario
+            GROUP BY rep.nombre
+            ORDER BY cantidad DESC
+        `);
+        res.json({ ...rows[0], por_repartidor: porRep });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

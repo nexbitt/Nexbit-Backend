@@ -1,8 +1,9 @@
 import prisma from '../config/prisma.js';
 
 const Pedido = {
-    findAll: async (onlyActive = true) => {
-        const where = onlyActive ? { status_pedido: 'activo' } : {};
+    findAll: async (onlyActive = true, extraWhere = {}) => {
+        const baseWhere = onlyActive ? { status_pedido: 'activo' } : {};
+        const where = { ...baseWhere, ...extraWhere };
         const rows = await prisma.pedidos.findMany({
             where,
             orderBy: { id_pedido: 'asc' },

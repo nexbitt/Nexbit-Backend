@@ -11,6 +11,10 @@ router.get('/activo', verificarToken, verificarRol('Repartidor'),
     repartoController.obtenerActivo
 );
 
+router.get('/stats', verificarToken, verificarRol('Repartidor'),
+    repartoController.obtenerStats
+);
+
 router.get('/historial', verificarToken, verificarRol('Repartidor'),
     repartoController.obtenerHistorial
 );
