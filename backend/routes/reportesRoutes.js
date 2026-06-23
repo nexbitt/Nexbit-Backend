@@ -37,10 +37,34 @@ router.get('/repartidores', verificarToken,
     getRepartidores
 );
 
-router.get('/ventas/kpis', verificarToken, getVentasKpis);
-router.get('/inventario/kpis', verificarToken, getInventarioKpis);
-router.get('/seguridad/kpis', verificarToken, getSeguridadKpis);
-router.get('/carritos/kpis', verificarToken, getCarritosKpis);
-router.get('/repartidores/kpis', verificarToken, getRepartidoresKpis);
+router.get('/ventas/kpis', verificarToken,
+    /*  #swagger.tags = ['Reportes']
+        #swagger.summary = 'KPIs de ventas' */
+    getVentasKpis
+);
+
+router.get('/inventario/kpis', verificarToken,
+    /*  #swagger.tags = ['Reportes']
+        #swagger.summary = 'KPIs de inventario' */
+    getInventarioKpis
+);
+
+router.get('/seguridad/kpis', verificarToken,
+    /*  #swagger.tags = ['Reportes']
+        #swagger.summary = 'KPIs de seguridad' */
+    getSeguridadKpis
+);
+
+router.get('/carritos/kpis', verificarToken,
+    /*  #swagger.tags = ['Reportes']
+        #swagger.summary = 'KPIs de carritos' */
+    getCarritosKpis
+);
+
+router.get('/repartidores/kpis', verificarToken,
+    /*  #swagger.tags = ['Reportes']
+        #swagger.summary = 'KPIs de repartidores' */
+    getRepartidoresKpis
+);
 
 export default router;

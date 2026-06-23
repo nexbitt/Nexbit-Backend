@@ -31,6 +31,10 @@ const doc = {
         { name: 'Reparto',        description: 'Panel del repartidor: aceptar y entregar pedidos' },
         { name: 'Reportes',       description: 'Generación de reportes (ventas, inventario, seguridad, carritos, repartidores)' },
         { name: 'Estadísticas',   description: 'Estadísticas públicas del sistema en tiempo real' },
+        { name: 'Chat',           description: 'Sistema de mensajería entre clientes y administración' },
+        { name: 'Admin',          description: 'Panel administrativo (solo Administrador)' },
+        { name: 'Bancos',         description: 'Gestión de métodos de pago y bancos' },
+        { name: 'Cargas',         description: 'Subida de archivos a Cloudinary' },
     ],
     securityDefinitions: {
         Bearer: {

@@ -9,6 +9,9 @@ import { upload } from '../middleware/uploadMiddleware.js';
 import { verificarToken } from '../middleware/authMiddleware.js';
 
 router.post('/cloudinary', verificarToken, upload.single('imagen'), (req, res) => {
+    /*  #swagger.tags = ['Cargas']
+        #swagger.summary = 'Subir archivo a Cloudinary'
+        #swagger.description = 'Sube una imagen a Cloudinary y devuelve la URL segura.' */
     try {
         if (!req.file) return res.status(400).json({ message: 'No se envió ningún archivo' });
         res.json({
@@ -21,6 +24,9 @@ router.post('/cloudinary', verificarToken, upload.single('imagen'), (req, res) =
 });
 
 router.delete('/cloudinary/:public_id', verificarToken, async (req, res) => {
+    /*  #swagger.tags = ['Cargas']
+        #swagger.summary = 'Eliminar archivo de Cloudinary'
+        #swagger.description = 'Elimina una imagen previamente subida a Cloudinary usando su public_id.' */
     try {
         const result = await cloudinary.uploader.destroy(req.params.public_id);
         res.json({ message: 'Archivo eliminado', result });

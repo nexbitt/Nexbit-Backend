@@ -59,6 +59,22 @@
     {
       "name": "Estadísticas",
       "description": "Estadísticas públicas del sistema en tiempo real"
+    },
+    {
+      "name": "Chat",
+      "description": "Sistema de mensajería entre clientes y administración"
+    },
+    {
+      "name": "Admin",
+      "description": "Panel administrativo (solo Administrador)"
+    },
+    {
+      "name": "Bancos",
+      "description": "Gestión de métodos de pago y bancos"
+    },
+    {
+      "name": "Cargas",
+      "description": "Subida de archivos a Cloudinary"
     }
   ],
   "schemes": [
@@ -648,7 +664,7 @@
         "tags": [
           "Roles"
         ],
-        "summary": "Crear un nuevo rol",
+        "summary": "Crear un nuevo rol (solo Administrador)",
         "description": "",
         "parameters": [
           {
@@ -733,7 +749,7 @@
         "tags": [
           "Roles"
         ],
-        "summary": "Actualizar un rol",
+        "summary": "Actualizar un rol (solo Administrador)",
         "description": "",
         "parameters": [
           {
@@ -746,43 +762,21 @@
             "name": "authorization",
             "in": "header",
             "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Roles"
-        ],
-        "summary": "Eliminar un rol",
-        "description": "",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
           },
           {
-            "name": "authorization",
-            "in": "header",
-            "type": "string"
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "nombre": {
+                  "example": "any"
+                },
+                "descripcion": {
+                  "example": "any"
+                }
+              }
+            }
           }
         ],
         "responses": {
@@ -943,6 +937,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
           },
           "401": {
             "description": "Unauthorized"
@@ -1145,6 +1142,9 @@
           "200": {
             "description": "OK"
           },
+          "400": {
+            "description": "Bad Request"
+          },
           "401": {
             "description": "Unauthorized"
           },
@@ -1284,10 +1284,10 @@
             "schema": {
               "type": "object",
               "properties": {
-                "categoria_id": {
+                "nombre": {
                   "example": "any"
                 },
-                "nombre": {
+                "categoria_id": {
                   "example": "any"
                 },
                 "precio_compra": {
@@ -1388,6 +1388,9 @@
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
           },
           "401": {
             "description": "Unauthorized"
@@ -1585,6 +1588,26 @@
             "name": "authorization",
             "in": "header",
             "type": "string"
+          },
+          {
+            "name": "usuario_id",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "estado",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "filterFecha",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "type": "string"
           }
         ],
         "responses": {
@@ -1621,6 +1644,9 @@
               "type": "object",
               "properties": {
                 "usuario_id": {
+                  "example": "any"
+                },
+                "comprobante_pago_url": {
                   "example": "any"
                 }
               }
@@ -1683,6 +1709,9 @@
         ],
         "summary": "Obtener ticket/recibo de un pedido",
         "description": "",
+        "produces": [
+          null
+        ],
         "parameters": [
           {
             "name": "id",
@@ -1693,6 +1722,11 @@
           {
             "name": "authorization",
             "in": "header",
+            "type": "string"
+          },
+          {
+            "name": "format",
+            "in": "query",
             "type": "string"
           }
         ],
@@ -1770,11 +1804,29 @@
             "name": "authorization",
             "in": "header",
             "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "estado": {
+                  "example": "any"
+                },
+                "rest": {
+                  "example": "any"
+                }
+              }
+            }
           }
         ],
         "responses": {
           "200": {
             "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
           },
           "401": {
             "description": "Unauthorized"
@@ -1837,6 +1889,42 @@
           "Pedidos"
         ],
         "summary": "Verificar si usuario tiene pedido activo",
+        "description": "",
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/pedidos/usuario/{usuario_id}": {
+      "get": {
+        "tags": [
+          "Pedidos"
+        ],
+        "summary": "Obtener pedidos de un usuario",
         "description": "",
         "parameters": [
           {
@@ -3053,8 +3141,162 @@
         }
       }
     },
+    "/api/reportes/ventas/kpis": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "KPIs de ventas",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reportes/inventario/kpis": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "KPIs de inventario",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reportes/seguridad/kpis": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "KPIs de seguridad",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reportes/carritos/kpis": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "KPIs de carritos",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reportes/repartidores/kpis": {
+      "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "KPIs de repartidores",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
     "/api/reparto/disponibles": {
       "get": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Obtener pedidos disponibles para el repartidor",
         "description": "",
         "parameters": [
           {
@@ -3081,6 +3323,40 @@
     },
     "/api/reparto/activo": {
       "get": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Obtener pedido actualmente asignado al repartidor",
+        "description": "",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/reparto/stats": {
+      "get": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Obtener estadísticas del repartidor",
         "description": "",
         "parameters": [
           {
@@ -3107,6 +3383,10 @@
     },
     "/api/reparto/historial": {
       "get": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Obtener historial de entregas del repartidor",
         "description": "",
         "parameters": [
           {
@@ -3138,6 +3418,10 @@
     },
     "/api/reparto/{id_pedido}/tomar": {
       "post": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Tomar un pedido para entrega",
         "description": "",
         "parameters": [
           {
@@ -3173,6 +3457,10 @@
     },
     "/api/reparto/{id_pedido}/en-camino": {
       "put": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Marcar pedido como en camino",
         "description": "",
         "parameters": [
           {
@@ -3208,6 +3496,10 @@
     },
     "/api/reparto/{id_pedido}/entregar": {
       "post": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Confirmar entrega del pedido",
         "description": "",
         "parameters": [
           {
@@ -3243,6 +3535,10 @@
     },
     "/api/reparto/{id_pedido}/cancelar": {
       "put": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Cancelar entrega de un pedido",
         "description": "",
         "parameters": [
           {
@@ -3290,6 +3586,10 @@
     },
     "/api/reparto/{id_pedido}/problema": {
       "post": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Reportar problema con entrega",
         "description": "",
         "parameters": [
           {
@@ -3337,6 +3637,10 @@
     },
     "/api/reparto/zonas-calientes": {
       "get": {
+        "tags": [
+          "Reparto"
+        ],
+        "summary": "Obtener zonas de alto volumen de entregas",
         "description": "",
         "parameters": [
           {
@@ -3363,6 +3667,10 @@
     },
     "/api/chat/conversacion/pedido/{pedido_id}": {
       "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Obtener o crear conversación de un pedido",
         "description": "",
         "parameters": [
           {
@@ -3398,6 +3706,10 @@
     },
     "/api/chat/conversacion/{conversacion_id}/mensajes": {
       "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Enviar mensaje en conversación",
         "description": "",
         "parameters": [
           {
@@ -3448,6 +3760,10 @@
     },
     "/api/chat/conversacion/{conversacion_id}/leidos": {
       "put": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Marcar mensajes como leídos",
         "description": "",
         "parameters": [
           {
@@ -3480,6 +3796,10 @@
     },
     "/api/chat/mensajes/no-leidos": {
       "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Obtener mensajes no leídos del usuario",
         "description": "",
         "parameters": [
           {
@@ -3506,6 +3826,10 @@
     },
     "/api/chat/conversaciones/admin": {
       "get": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Listar conversaciones para administrador",
         "description": "",
         "parameters": [
           {
@@ -3532,6 +3856,10 @@
     },
     "/api/admin/pedidos": {
       "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Listar todos los pedidos (admin)",
         "description": "",
         "parameters": [
           {
@@ -3541,6 +3869,16 @@
           },
           {
             "name": "status_pedido",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "filterFecha",
             "in": "query",
             "type": "string"
           }
@@ -3563,6 +3901,10 @@
     },
     "/api/admin/pedidos/{id}": {
       "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Obtener detalles de un pedido (admin)",
         "description": "",
         "parameters": [
           {
@@ -3593,6 +3935,10 @@
     },
     "/api/admin/pedidos/{id}/gestion": {
       "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Gestionar un pedido (cambiar estado, asignar repartidor)",
         "description": "",
         "parameters": [
           {
@@ -3644,6 +3990,10 @@
     },
     "/api/bancos/": {
       "get": {
+        "tags": [
+          "Bancos"
+        ],
+        "summary": "Listar bancos y métodos de pago disponibles",
         "description": "",
         "parameters": [
           {
@@ -3668,64 +4018,17 @@
         }
       }
     },
-    "/api/simulacion/checkout": {
+    "/api/uploads/cloudinary": {
       "post": {
         "tags": [
-          "Simulación"
+          "Cargas"
         ],
-        "summary": "Crear pedido en modo simulación (como cliente)",
-        "description": "",
+        "summary": "Subir archivo a Cloudinary",
+        "description": "Sube una imagen a Cloudinary y devuelve la URL segura.",
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "productos": {
-                  "example": "any"
-                },
-                "direccion_entrega": {
-                  "example": "any"
-                },
-                "notas": {
-                  "example": "any"
-                }
-              }
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Created"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/simulacion/{id}/comprobante": {
-      "post": {
-        "tags": [
-          "Simulación"
-        ],
-        "summary": "Subir comprobante de pago en modo simulación",
-        "description": "",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
+            "name": "authorization",
+            "in": "header",
             "type": "string"
           }
         ],
@@ -3742,71 +4045,32 @@
           "403": {
             "description": "Forbidden"
           },
-          "404": {
-            "description": "Not Found"
-          },
           "500": {
             "description": "Internal Server Error"
           }
         }
       }
     },
-    "/api/simulacion/{id}/estado": {
-      "put": {
+    "/api/uploads/cloudinary/{public_id}": {
+      "delete": {
         "tags": [
-          "Simulación"
+          "Cargas"
         ],
-        "summary": "Actualizar estado de pedido en modo simulación (como repartidor)",
-        "description": "",
+        "summary": "Eliminar archivo de Cloudinary",
+        "description": "Elimina una imagen previamente subida a Cloudinary usando su public_id.",
         "parameters": [
           {
-            "name": "id",
+            "name": "public_id",
             "in": "path",
             "required": true,
             "type": "string"
           },
           {
-            "name": "body",
-            "in": "body",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "estado": {
-                  "example": "any"
-                }
-              }
-            }
+            "name": "authorization",
+            "in": "header",
+            "type": "string"
           }
         ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
-          }
-        }
-      }
-    },
-    "/api/simulacion/pedidos/disponibles": {
-      "get": {
-        "tags": [
-          "Simulación"
-        ],
-        "summary": "Listar pedidos disponibles para simulación de repartidor",
-        "description": "",
         "responses": {
           "200": {
             "description": "OK"
