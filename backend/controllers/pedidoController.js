@@ -712,4 +712,42 @@ const getTrash = async (req, res) => {
     }
 };
 
-export default { getAll, getOne, checkout, store, update, destroy, getTicket, cancelar, subirComprobante, aprobarPago, rechazarPago, pedidosEnRevision, verificarPedidoActivo, enviarComentario, softDelete, restore, getTrash };
+const getMisPedidos = async (req, res) => {
+    try {
+        const { usuario_id } = req.params;
+        const rows = await prisma.pedidos.findMany({
+            where: {
+                usuario_id: Number(usuario_id),
+                status_pedido: 'activo'
+            },
+            orderBy: { fecha_pedido: 'desc' },
+            include: {
+                usuario: { select: { nombre: true, numero_documento: true } },
+                detalle_pedido: {
+                    orderBy: { id_detalle_pedido: 'asc' },
+                    include: { producto: { select: { nombre: true, imagen_url: true } } }
+                }
+            }
+        });
+        
+        const result = rows.map(pedido => ({
+            ...pedido,
+            usuario_nombre: pedido.usuario?.nombre,
+            numero_documento: pedido.usuario?.numero_documento,
+            usuario: undefined,
+            detalles: pedido.detalle_pedido.map(d => ({
+                ...d,
+                producto_nombre: d.producto?.nombre,
+                imagen_url: d.producto?.imagen_url || null,
+                producto: undefined
+            })),
+            detalle_pedido: undefined
+        }));
+        
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export default { getAll, getOne, checkout, store, update, destroy, getTicket, cancelar, subirComprobante, aprobarPago, rechazarPago, pedidosEnRevision, verificarPedidoActivo, enviarComentario, softDelete, restore, getTrash, getMisPedidos };

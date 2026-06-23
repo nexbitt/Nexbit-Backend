@@ -54,6 +54,12 @@ router.get('/usuario/:usuario_id/verificar-pendiente', verificarToken,
     pedidoController.verificarPedidoActivo
 );
 
+router.get('/usuario/:usuario_id', verificarToken,
+    /*  #swagger.tags = ['Pedidos']
+        #swagger.summary = 'Obtener pedidos de un usuario' */
+    pedidoController.getMisPedidos
+);
+
 router.post('/', verificarToken,
     /*  #swagger.tags = ['Pedidos']
         #swagger.summary = 'Crear un nuevo pedido manualmente' */
