@@ -49,24 +49,29 @@ if (process.env.CORS_ORIGIN) {
   });
 }
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
-    // Permitir peticiones sin origen (como Postman o curl)
+    // Permitir peticiones sin origen (Postman, curl, Swagger Try-it-out interno)
     if (!origin) return callback(null, true);
 
-    // Verificar si el origen está en nuestra lista blanca
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.warn(`⚠️ CORS bloqueado para el origen: ${origin}`);
-      // En lugar de un error duro, devolvemos false para que la librería CORS maneje el rechazo
-      callback(null, false);
+      // Error explícito → el servidor devuelve 403 con mensaje claro
+      callback(new Error(`Origen no permitido por CORS: ${origin}`));
     }
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  credentials: true
-}));
+  credentials: true,
+  optionsSuccessStatus: 200 // Compatibilidad con navegadores antiguos (IE11)
+};
+
+app.use(cors(corsOptions));
+
+// Responde explícitamente a preflight OPTIONS en todas las rutas (sintaxis Express 5)
+app.options('/{*path}', cors(corsOptions));
 
 // ─── PARSERS ─────────────────────────────────────────────────────────────────
 app.use(express.json());
