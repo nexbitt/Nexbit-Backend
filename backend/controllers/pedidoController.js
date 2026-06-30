@@ -6,6 +6,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import Pedido from '../models/pedidoModel.js';
 import prisma from '../config/prisma.js';
 import { getIO } from '../socket.js';
+import { success, error as responseError, notFound, badRequest, unauthorized, forbidden, conflict } from '../utils/responseHelper.js';
 
 const getAll = async (req, res) => {
     try {
@@ -30,33 +31,33 @@ const getAll = async (req, res) => {
             ].filter(Boolean);
         }
         const data = await Pedido.findAll(true, extraWhere);
-        res.json(data);
+        success(res, data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
 const getOne = async (req, res) => {
     try {
         const row = await Pedido.findById(req.params.id);
-        if (!row) return res.status(404).json({ message: "Pedido no encontrado" });
-        res.json(row);
+        if (!row) return notFound(res, 'Pedido');
+        success(res, row);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
 const checkout = async (req, res) => {
     try {
         const { usuario_id } = req.body;
-        if (!usuario_id) return res.status(400).json({ message: "Se requiere usuario activo" });
+        if (!usuario_id) return badRequest(res, "Se requiere usuario activo");
 
         const cartItems = await prisma.carrito.findMany({
             where: { usuario_id: Number(usuario_id) },
             include: { producto: { select: { precio_venta: true, nombre: true } } }
         });
 
-        if (cartItems.length === 0) return res.status(400).json({ message: "El carrito está vacío" });
+        if (cartItems.length === 0) return badRequest(res, "El carrito está vacío");
 
         for (const item of cartItems) {
             const producto = await prisma.productos.findUnique({
@@ -64,9 +65,7 @@ const checkout = async (req, res) => {
                 select: { stock_actual: true, nombre: true }
             });
             if (!producto || producto.stock_actual < item.cantidad) {
-                return res.status(400).json({
-                    message: `Stock insuficiente para: ${producto?.nombre}`
-                });
+                return badRequest(res, `Stock insuficiente para: ${producto?.nombre}`);
             }
         }
 
@@ -114,21 +113,20 @@ const checkout = async (req, res) => {
             mensaje: 'Un cliente ha realizado un nuevo pedido.'
         });
 
-        res.status(201).json({
-            message: "Pedido procesado con éxito",
+        success(res, {
             id_pedido: transactionResult.id_pedido,
             datos_bancarios: cuentasBancarias,
             total: Number(total)
-        });
+        }, 'Pedido procesado con éxito', 201);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
 const store = async (req, res) => {
     try {
         const { usuario_id, comprobante_pago_url } = req.body;
-        if (!usuario_id) return res.status(400).json({ message: "El ID del usuario es obligatorio" });
+        if (!usuario_id) return badRequest(res, "El ID del usuario es obligatorio");
 
         const id = await Pedido.create(req.body);
 
@@ -166,9 +164,9 @@ const store = async (req, res) => {
             });
         }
 
-        res.status(201).json({ message: "Pedido creado con éxito", id_pedido: id });
+        success(res, { id_pedido: id }, 'Pedido creado con éxito', 201);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -179,7 +177,7 @@ const update = async (req, res) => {
 
         if (estado) {
             const pedido = await Pedido.findById(id);
-            if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+            if (!pedido) return notFound(res, 'Pedido');
 
             const transicionesValidas = {
                 PENDIENTE:  ['CONFIRMADO'],
@@ -190,17 +188,15 @@ const update = async (req, res) => {
             };
             const permitidos = transicionesValidas[pedido.estado];
             if (!permitidos || !permitidos.includes(estado)) {
-                return res.status(400).json({
-                    message: `Transición inválida: ${pedido.estado} → ${estado}`
-                });
+                return badRequest(res, `Transición inválida: ${pedido.estado} → ${estado}`);
             }
         }
 
         const actualizado = await Pedido.update(id, req.body);
-        if (!actualizado) return res.status(404).json({ message: "Pedido no encontrado" });
-        res.json({ message: "Pedido actualizado" });
+        if (!actualizado) return notFound(res, 'Pedido');
+        success(res, null, 'Pedido actualizado');
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -208,13 +204,13 @@ const destroy = async (req, res) => {
     try {
         const { id } = req.params;
         const eliminado = await Pedido.delete(id);
-        if (!eliminado) return res.status(404).json({ message: "Pedido no encontrado" });
-        res.json({ message: "Pedido eliminado" });
+        if (!eliminado) return notFound(res, 'Pedido');
+        success(res, null, 'Pedido eliminado');
     } catch (error) {
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-            return res.status(400).json({ error: "No se puede eliminar este pedido porque tiene facturas o detalles asociados." });
+            return badRequest(res, 'No se puede eliminar este pedido porque tiene facturas o detalles asociados.');
         }
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -228,24 +224,28 @@ const STATUS_LABELS = {
   EN_CAMINO: 'EN CAMINO',
   ENTREGADO: 'ENTREGADO',
   CANCELADO: 'CANCELADO',
+  DISPONIBLE: 'DISPONIBLE',
+  EN_REPARTO: 'EN REPARTO',
 };
 
 const STATUS_COLORS = {
-  PENDIENTE: { bg: '#fef9c3', color: '#854d0e' },
-  CONFIRMADO: { bg: '#ecfdf5', color: '#065f46' },
-  EN_REVISION: { bg: '#fff7ed', color: '#c2410c' },
-  APROBADO: { bg: '#f0fdf4', color: '#166534' },
-  RECHAZADO: { bg: '#fef2f2', color: '#991b1b' },
-  ASIGNADO: { bg: '#eff6ff', color: '#1e40af' },
-  EN_CAMINO: { bg: '#eef2ff', color: '#4338ca' },
-  ENTREGADO: { bg: '#ecfdf5', color: '#065f46' },
-  CANCELADO: { bg: '#fef2f2', color: '#b91c1c' },
+  PENDIENTE:   { bg: '#fef3c7', color: '#92400e' },
+  CONFIRMADO:  { bg: '#e0f2fe', color: '#0369a1' },
+  EN_REVISION: { bg: '#ffedd5', color: '#c2410c' },
+  APROBADO:    { bg: '#d1fae5', color: '#065f46' },
+  RECHAZADO:   { bg: '#fee2e2', color: '#dc2626' },
+  ASIGNADO:    { bg: '#dbeafe', color: '#1d4ed8' },
+  EN_CAMINO:   { bg: '#ede9fe', color: '#6d28d9' },
+  ENTREGADO:   { bg: '#ccfbf1', color: '#0f766e' },
+  CANCELADO:   { bg: '#ffe4e6', color: '#be123c' },
+  DISPONIBLE:  { bg: '#cffafe', color: '#0891b2' },
+  EN_REPARTO:  { bg: '#e0e7ff', color: '#4338ca' },
 };
 
 const getTicket = async (req, res) => {
     try {
         const pedido = await Pedido.findByIdWithDetails(req.params.id);
-        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (!pedido) return notFound(res, 'Pedido');
 
         if (req.query.format === 'html') {
             const detalles = pedido.detalles || [];
@@ -398,9 +398,9 @@ const getTicket = async (req, res) => {
             return res.send(html);
         }
 
-        res.json(pedido);
+        success(res, pedido);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 const cancelar = async (req, res) => {
@@ -409,26 +409,23 @@ const cancelar = async (req, res) => {
         const pedido = await Pedido.findById(id);
 
         if (!pedido) {
-            return res.status(404).json({ message: "Pedido no encontrado" });
+            return notFound(res, 'Pedido');
         }
 
-        // Regla RF011: Solo cancelar si está PENDIENTE
         if (pedido.estado !== 'PENDIENTE') {
-            return res.status(400).json({
-                message: "No se puede cancelar un pedido que ya no está PENDIENTE"
-            });
+            return badRequest(res, 'No se puede cancelar un pedido que ya no está PENDIENTE');
         }
 
         // LLAMADA A LA NUEVA FUNCIÓN DEL MODELO
         const actualizado = await Pedido.updateStatus(id, 'CANCELADO');
 
         if (actualizado) {
-            res.json({ message: "Pedido cancelado con éxito" });
+            success(res, null, 'Pedido cancelado con éxito');
         } else {
-            res.status(500).json({ message: "No se pudo actualizar el estado" });
+            responseError(res, 'SERVER_ERROR', 'No se pudo actualizar el estado');
         }
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -436,11 +433,11 @@ const subirComprobante = async (req, res) => {
     try {
         const { id } = req.params;
         const pedido = await Pedido.findById(id);
-        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (!pedido) return notFound(res, 'Pedido');
         if (pedido.estado !== 'PENDIENTE' && pedido.estado !== 'RECHAZADO') {
-            return res.status(400).json({ message: "El pedido debe estar en estado Pendiente o Rechazado" });
+            return badRequest(res, 'El pedido debe estar en estado Pendiente o Rechazado');
         }
-        if (!req.file) return res.status(400).json({ message: "Debe subir un archivo de imagen" });
+        if (!req.file) return badRequest(res, 'Debe subir un archivo de imagen');
 
         // Si ya hay un comprobante anterior, eliminarlo de Cloudinary
         if (pedido.comprobante_pago_url) {
@@ -465,7 +462,7 @@ const subirComprobante = async (req, res) => {
             }
         });
 
-        if (!actualizado) return res.status(500).json({ message: "No se pudo actualizar el comprobante" });
+        if (!actualizado) return responseError(res, 'SERVER_ERROR', 'No se pudo actualizar el comprobante');
 
         const estadoAnterior = pedido.estado;
 
@@ -505,9 +502,9 @@ const subirComprobante = async (req, res) => {
             mensaje: 'Un cliente ha subido un comprobante de pago para revisión.'
         });
 
-        res.json({ message: "Comprobante subido con éxito. Pedido en revisión." });
+        success(res, null, 'Comprobante subido con éxito. Pedido en revisión.');
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -516,13 +513,13 @@ const aprobarPago = async (req, res) => {
         const { id } = req.params;
         const adminId = req.usuario.userId;
         const pedido = await Pedido.findById(id);
-        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (!pedido) return notFound(res, 'Pedido');
         if (pedido.estado !== 'EN_REVISION') {
-            return res.status(400).json({ message: "El pedido no está en revisión" });
+            return badRequest(res, 'El pedido no está en revisión');
         }
 
         const actualizado = await Pedido.updateStatus(id, 'APROBADO');
-        if (!actualizado) return res.status(500).json({ message: "No se pudo aprobar el pago" });
+        if (!actualizado) return responseError(res, 'SERVER_ERROR', 'No se pudo aprobar el pago');
 
         await prisma.seguimiento_pedido.create({
             data: {
@@ -550,9 +547,9 @@ const aprobarPago = async (req, res) => {
             mensaje: 'Tu pago ha sido aprobado. Tu pedido está en proceso.'
         });
 
-        res.json({ message: "Pago aprobado. Pedido listo para entrega." });
+        success(res, null, 'Pago aprobado. Pedido listo para entrega.');
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -562,13 +559,13 @@ const rechazarPago = async (req, res) => {
         const { motivo } = req.body;
         const adminId = req.usuario.userId;
         const pedido = await Pedido.findById(id);
-        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (!pedido) return notFound(res, 'Pedido');
         if (pedido.estado !== 'EN_REVISION') {
-            return res.status(400).json({ message: "El pedido no está en revisión" });
+            return badRequest(res, 'El pedido no está en revisión');
         }
 
         const actualizado = await Pedido.updateStatusWithMotivo(id, 'RECHAZADO', motivo || 'Pago rechazado');
-        if (!actualizado) return res.status(500).json({ message: "No se pudo rechazar el pago" });
+        if (!actualizado) return responseError(res, 'SERVER_ERROR', 'No se pudo rechazar el pago');
 
         await prisma.seguimiento_pedido.create({
             data: {
@@ -596,9 +593,9 @@ const rechazarPago = async (req, res) => {
             mensaje: `Tu pago ha sido rechazado: ${motivo || 'Pago no válido'}`
         });
 
-        res.json({ message: "Pago rechazado. Se notificará al cliente." });
+        success(res, null, 'Pago rechazado. Se notificará al cliente.');
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -614,9 +611,9 @@ const pedidosEnRevision = async (req, res) => {
                 }
             }
         });
-        res.json(data);
+        success(res, data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -630,9 +627,9 @@ const verificarPedidoActivo = async (req, res) => {
             },
             select: { id_pedido: true, estado: true }
         });
-        res.json({ tienePedidoActivo: !!pedido, pedido });
+        success(res, { tienePedidoActivo: !!pedido, pedido });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -642,14 +639,14 @@ const enviarComentario = async (req, res) => {
         const { comentario } = req.body;
         const adminId = req.usuario.userId;
         const pedido = await Pedido.findById(id);
-        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (!pedido) return notFound(res, 'Pedido');
         if (!comentario || !comentario.trim()) {
-            return res.status(400).json({ message: "El comentario es obligatorio" });
+            return badRequest(res, 'El comentario es obligatorio');
         }
 
         const estadosValidos = ['EN_REVISION', 'PENDIENTE', 'APROBADO', 'RECHAZADO'];
         if (!estadosValidos.includes(pedido.estado)) {
-            return res.status(400).json({ message: "No se pueden enviar comentarios en este estado" });
+            return badRequest(res, 'No se pueden enviar comentarios en este estado');
         }
 
         await prisma.seguimiento_pedido.create({
@@ -662,9 +659,9 @@ const enviarComentario = async (req, res) => {
             }
         });
 
-        res.json({ message: "Comentario enviado con éxito" });
+        success(res, null, 'Comentario enviado con éxito');
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -673,15 +670,15 @@ const softDelete = async (req, res) => {
         const { id } = req.params;
         const userId = req.usuario.userId;
         const pedido = await Pedido.findById(id);
-        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (!pedido) return notFound(res, 'Pedido');
         if (pedido.usuario_id !== userId) {
-            return res.status(403).json({ message: "No puedes eliminar un pedido que no te pertenece" });
+            return forbidden(res, 'No puedes eliminar un pedido que no te pertenece');
         }
         const eliminado = await Pedido.softDelete(id);
-        if (!eliminado) return res.status(404).json({ message: "Pedido no encontrado" });
-        res.json({ message: "Pedido movido a la papelera" });
+        if (!eliminado) return notFound(res, 'Pedido');
+        success(res, null, 'Pedido movido a la papelera');
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -690,15 +687,15 @@ const restore = async (req, res) => {
         const { id } = req.params;
         const userId = req.usuario.userId;
         const pedido = await Pedido.findById(id);
-        if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        if (!pedido) return notFound(res, 'Pedido');
         if (pedido.usuario_id !== userId) {
-            return res.status(403).json({ message: "No puedes restaurar un pedido que no te pertenece" });
+            return forbidden(res, 'No puedes restaurar un pedido que no te pertenece');
         }
         const restaurado = await Pedido.restore(id);
-        if (!restaurado) return res.status(404).json({ message: "Pedido no encontrado" });
-        res.json({ message: "Pedido restaurado de la papelera" });
+        if (!restaurado) return notFound(res, 'Pedido');
+        success(res, null, 'Pedido restaurado de la papelera');
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -706,10 +703,45 @@ const getTrash = async (req, res) => {
     try {
         const userId = req.usuario.userId;
         const data = await Pedido.findDeletedByUser(userId);
-        res.json(data);
+        success(res, data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
+};
+
+const FSM_RULES = {
+  transitions: {
+    PENDIENTE:  ['CONFIRMADO', 'CANCELADO'],
+    CONFIRMADO: ['EN_REVISION'],
+    EN_REVISION: ['APROBADO', 'RECHAZADO'],
+    APROBADO:   ['ASIGNADO'],
+    ASIGNADO:   ['EN_CAMINO'],
+    EN_CAMINO:  ['ENTREGADO', 'CANCELADO'],
+    CANCELADO:  [],
+    RECHAZADO:  ['PENDIENTE'],
+    ENTREGADO:  [],
+  },
+  fsmMap: {
+    ENTREGADO: 'ENTREGADO',
+    CANCELADO: 'CANCELADO',
+    ASIGNADO: 'EN_REPARTO',
+    EN_CAMINO: 'EN_REPARTO',
+    APROBADO: 'DISPONIBLE',
+    EN_REVISION: 'EN_REVISION',
+    RECHAZADO: 'RECHAZADO',
+    PENDIENTE: 'PENDIENTE',
+    CONFIRMADO: 'CONFIRMADO',
+  },
+  statusLabels: STATUS_LABELS,
+  statusColors: STATUS_COLORS,
+};
+
+const getFsmRules = async (req, res) => {
+  try {
+    success(res, FSM_RULES);
+  } catch (error) {
+    responseError(res, 'SERVER_ERROR', error.message);
+  }
 };
 
 const getMisPedidos = async (req, res) => {
@@ -744,10 +776,10 @@ const getMisPedidos = async (req, res) => {
             detalle_pedido: undefined
         }));
         
-        res.json(result);
+        success(res, result);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
-export default { getAll, getOne, checkout, store, update, destroy, getTicket, cancelar, subirComprobante, aprobarPago, rechazarPago, pedidosEnRevision, verificarPedidoActivo, enviarComentario, softDelete, restore, getTrash, getMisPedidos };
+export default { getAll, getOne, checkout, store, update, destroy, getTicket, cancelar, subirComprobante, aprobarPago, rechazarPago, pedidosEnRevision, verificarPedidoActivo, enviarComentario, softDelete, restore, getTrash, getMisPedidos, getFsmRules };

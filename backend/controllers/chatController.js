@@ -1,5 +1,6 @@
 import prisma from '../config/prisma.js';
 import { getIO } from '../socket.js';
+import { success, error as responseError, notFound, badRequest, unauthorized, forbidden, conflict } from '../utils/responseHelper.js';
 
 const obtenerOCrearConversacion = async (req, res) => {
   try {
@@ -24,7 +25,7 @@ const obtenerOCrearConversacion = async (req, res) => {
         where: { id_pedido: Number(pedido_id) },
         select: { usuario_id: true }
       });
-      if (!pedido) return res.status(404).json({ message: 'Pedido no encontrado' });
+      if (!pedido) return notFound(res, 'Pedido');
 
       const adminId = userRoleId === 1 ? userId : null;
 
@@ -45,9 +46,9 @@ const obtenerOCrearConversacion = async (req, res) => {
       });
     }
 
-    res.json(conversacion);
+    success(res, conversacion);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    responseError(res, 'SERVER_ERROR', error.message);
   }
 };
 
@@ -58,13 +59,13 @@ const enviarMensaje = async (req, res) => {
     const remitenteId = req.usuario.userId;
 
     if (!mensaje || !mensaje.trim()) {
-      return res.status(400).json({ message: 'El mensaje no puede estar vacío' });
+      return badRequest(res, 'El mensaje no puede estar vacío');
     }
 
     const conversacion = await prisma.conversaciones.findUnique({
       where: { id_conversacion: Number(conversacion_id) }
     });
-    if (!conversacion) return res.status(404).json({ message: 'Conversación no encontrada' });
+    if (!conversacion) return notFound(res, 'Conversación');
 
     const nuevoMensaje = await prisma.mensajes.create({
       data: {
@@ -91,9 +92,9 @@ const enviarMensaje = async (req, res) => {
       });
     }
 
-    res.status(201).json(nuevoMensaje);
+    success(res, nuevoMensaje, undefined, 201);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    responseError(res, 'SERVER_ERROR', error.message);
   }
 };
 
@@ -111,9 +112,9 @@ const marcarLeidos = async (req, res) => {
       data: { leido: true }
     });
 
-    res.json({ message: 'Mensajes marcados como leídos' });
+    success(res, null, 'Mensajes marcados como leídos');
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    responseError(res, 'SERVER_ERROR', error.message);
   }
 };
 
@@ -129,9 +130,9 @@ const obtenerMensajesNoLeidos = async (req, res) => {
       }
     });
 
-    res.json({ noLeidos: count });
+    success(res, { noLeidos: count });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    responseError(res, 'SERVER_ERROR', error.message);
   }
 };
 
@@ -161,9 +162,9 @@ const listarConversacionesAdmin = async (req, res) => {
       return { ...c, mensajes_no_leidos: noLeidos };
     }));
 
-    res.json(result);
+    success(res, result);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    responseError(res, 'SERVER_ERROR', error.message);
   }
 };
 

@@ -4,6 +4,7 @@
  */
 import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma.js';
+import { unauthorized, forbidden, error as resError } from '../utils/responseHelper.js';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura';
 
@@ -31,55 +32,47 @@ export const verificarToken = (req, res, next) => {
     }
 
     if (!token) {
-        return res.status(401).json({ message: 'Acceso denegado. No se proporcionó un token.' });
+        return unauthorized(res, 'Acceso denegado. No se proporcionó un token.');
     }
 
     try {
         const decoded = jwt.verify(token, SECRET_KEY);
-        req.usuario = decoded; // Disponible en las rutas protegidas
+        req.usuario = decoded;
         next();
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({ message: 'Token expirado. Por favor, inicia sesión de nuevo.' });
+            return unauthorized(res, 'Token expirado. Por favor, inicia sesión de nuevo.');
         }
-        return res.status(403).json({ message: 'Token inválido.' });
+        return forbidden(res, 'Token inválido.');
     }
 };
 
-/**
- * Middleware para verificar que el usuario autenticado tenga un rol específico.
- * @param  {...string} roles - Nombres de roles permitidos (ej: 'Administrador', 'Cliente', 'Repartidor')
- * @returns {Function} middleware de Express
- */
 export const verificarRol = (...roles) => {
     return async (req, res, next) => {
         try {
             if (!req.usuario) {
-                return res.status(401).json({ message: 'No autenticado.' });
+                return unauthorized(res, 'No autenticado.');
             }
 
-            // Obtener el nombre del rol desde la BD
             const usuario = await prisma.usuarios.findUnique({
                 where: { id_usuario: req.usuario.userId },
                 include: { rol: { select: { nombre: true } } }
             });
 
             if (!usuario) {
-                return res.status(401).json({ message: 'Usuario no encontrado.' });
+                return unauthorized(res, 'Usuario no encontrado.');
             }
 
             const rolNombre = usuario.rol.nombre;
 
             if (!roles.includes(rolNombre)) {
-                return res.status(403).json({
-                    message: `Acceso denegado. Se requiere uno de los siguientes roles: ${roles.join(', ')}`
-                });
+                return forbidden(res, `Acceso denegado. Se requiere uno de los siguientes roles: ${roles.join(', ')}`);
             }
 
             req.usuario.rol_nombre = rolNombre;
             next();
-        } catch (error) {
-            return res.status(500).json({ message: 'Error al verificar rol.', error: error.message });
+        } catch (err) {
+            return resError(res, 'SERVER_ERROR', `Error al verificar rol: ${err.message}`, 500);
         }
     };
 };

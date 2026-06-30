@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import { SOCKET_EVENTS } from './utils/socketEvents.js';
 
 let io = null;
 
@@ -38,15 +39,15 @@ export const configureSocket = (server) => {
     }
 
     // Chat events
-    socket.on('chat:join', (conversacionId) => {
+    socket.on(SOCKET_EVENTS.CHAT_JOIN, (conversacionId) => {
       socket.join(`chat:${conversacionId}`);
     });
 
-    socket.on('chat:leave', (conversacionId) => {
+    socket.on(SOCKET_EVENTS.CHAT_LEAVE, (conversacionId) => {
       socket.leave(`chat:${conversacionId}`);
     });
 
-    socket.on('chat:send', (data) => {
+    socket.on(SOCKET_EVENTS.CHAT_SEND, (data) => {
       const { conversacionId, mensaje, remitenteId } = data;
       io.to(`chat:${conversacionId}`).emit('chat:message', {
         conversacionId,
@@ -57,9 +58,9 @@ export const configureSocket = (server) => {
       io.to('admin').emit('notificacion:chat', { conversacionId, remitenteId });
     });
 
-    socket.on('chat:typing', (data) => {
+    socket.on(SOCKET_EVENTS.CHAT_TYPING, (data) => {
       const { conversacionId, usuarioId } = data;
-      socket.to(`chat:${conversacionId}`).emit('chat:typing', { conversacionId, usuarioId });
+      socket.to(`chat:${conversacionId}`).emit(SOCKET_EVENTS.CHAT_TYPING, { conversacionId, usuarioId });
     });
 
     socket.on('disconnect', () => {});
@@ -70,7 +71,7 @@ export const configureSocket = (server) => {
 
 export const emitNuevoPedidoDisponible = (pedidoId, data) => {
   if (io) {
-    io.to('repartidores').emit('pedido:disponible-nuevo', { pedido_id: pedidoId, ...data });
+    io.to('repartidores').emit(SOCKET_EVENTS.NUEVO_PEDIDO_DISPONIBLE, { pedido_id: pedidoId, ...data });
   }
 };
 

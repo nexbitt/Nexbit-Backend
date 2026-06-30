@@ -3,6 +3,7 @@
  * @description Controlador con las 5 queries de reportes ejecutadas via db.js (mysql2).
  */
 import db from '../config/db.js';
+import { success, error as responseError, notFound, badRequest, unauthorized, forbidden, conflict } from '../utils/responseHelper.js';
 
 // ── 1. Ventas y Facturación ───────────────────────────────────────────────────
 export const getVentas = async (req, res) => {
@@ -33,9 +34,9 @@ export const getVentas = async (req, res) => {
             WHERE f.estado != 'ANULADA'
             ORDER BY f.fecha_emision DESC
         `);
-        res.json(rows);
+        success(res, rows);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -67,9 +68,9 @@ export const getInventario = async (req, res) => {
             WHERE p.activo = TRUE
             ORDER BY p.stock_actual ASC, Margen_Ganancia DESC
         `);
-        res.json(rows);
+        success(res, rows);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -94,9 +95,9 @@ export const getSeguridad = async (req, res) => {
             LEFT JOIN roles r ON u.rol_id = r.id_rol
             ORDER BY r.nombre ASC, u.activo DESC
         `);
-        res.json(rows);
+        success(res, rows);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -121,9 +122,9 @@ export const getCarritos = async (req, res) => {
             INNER JOIN productos p ON car.producto_id = p.id_producto
             ORDER BY u.nombre ASC
         `);
-        res.json(rows);
+        success(res, rows);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -163,9 +164,9 @@ export const getRepartidores = async (req, res) => {
                 ped.fecha_entrega_est, ped.fecha_entrega_real, ped.total
             ORDER BY rep.nombre ASC, ped.fecha_asignacion DESC
         `);
-        res.json(rows);
+        success(res, rows);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -191,9 +192,9 @@ export const getVentasKpis = async (req, res) => {
             ORDER BY total_uds DESC
             LIMIT 6
         `);
-        res.json({ ...rows[0], top_productos: top });
+        success(res, { ...rows[0], top_productos: top });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -218,9 +219,9 @@ export const getInventarioKpis = async (req, res) => {
             ORDER BY margen_pct DESC
             LIMIT 6
         `);
-        res.json({ ...rows[0], top_margen: top });
+        success(res, { ...rows[0], top_margen: top });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -240,9 +241,9 @@ export const getSeguridadKpis = async (req, res) => {
             GROUP BY r.nombre
             ORDER BY cantidad DESC
         `);
-        res.json({ ...rows[0], por_rol: porRol });
+        success(res, { ...rows[0], por_rol: porRol });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -256,9 +257,9 @@ export const getCarritosKpis = async (req, res) => {
             FROM carrito car
             INNER JOIN productos p ON car.producto_id = p.id_producto
         `);
-        res.json(rows[0]);
+        success(res, rows[0]);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -281,8 +282,8 @@ export const getRepartidoresKpis = async (req, res) => {
             GROUP BY rep.nombre
             ORDER BY cantidad DESC
         `);
-        res.json({ ...rows[0], por_repartidor: porRep });
+        success(res, { ...rows[0], por_repartidor: porRep });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };

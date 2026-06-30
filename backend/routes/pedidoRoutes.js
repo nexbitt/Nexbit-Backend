@@ -23,6 +23,13 @@ router.put('/:id/cancelar', verificarToken, verificarRol('Cliente', 'Administrad
     pedidoController.cancelar
 );
 
+// Reglas de la máquina de estados (FSM) - pública para que el frontend las consuma
+router.get('/fsm-rules',
+  /*  #swagger.tags = ['Pedidos']
+      #swagger.summary = 'Obtener reglas de la máquina de estados (transiciones, colores, etiquetas)' */
+  pedidoController.getFsmRules
+);
+
 // Rutas generales (admin puede ver todo, cliente solo sus pedidos)
 router.get('/', verificarToken,
     /*  #swagger.tags = ['Pedidos']

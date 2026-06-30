@@ -11,6 +11,7 @@ import swaggerUI from 'swagger-ui-express';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const swaggerDocumentation = require('./swagger.json');
+import { error as sendError } from './utils/responseHelper.js';
 
 import authRoutes from './routes/authRoutes.js';
 import usuarioRoutes from './routes/usuarioRoutes.js';
@@ -90,10 +91,13 @@ app.use('/api/productos', productoRoutes);
 app.use('/api/pedidos', pedidoRoutes);
 app.use('/api/facturas', facturaRoutes);
 app.use('/api/carrito', carritoRoutes);
+app.use('/api/admin/repartidores', repartidorRoutes);
+app.use('/api/delivery/reparto', repartoRoutes);
+// Backward-compatible aliases
 app.use('/api/repartidores', repartidorRoutes);
+app.use('/api/reparto', repartoRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/reportes', reportesRoutes);
-app.use('/api/reparto', repartoRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/bancos', bancosRoutes);
@@ -102,10 +106,7 @@ app.use('/api/uploads', uploadRoutes);
 // ─── MANEJO DE ERRORES ───────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error('Error no controlado:', err.stack);
-  res.status(500).json({
-    error: 'Error interno del servidor',
-    message: err.message
-  });
+  sendError(res, 'SERVER_ERROR', err.message, 500);
 });
 
 export default app;

@@ -3,34 +3,35 @@
  * @description Controlador para la gestión de facturas.
  */
 import Factura from '../models/facturaModel.js';
+import { success, error as responseError, notFound, badRequest, unauthorized, forbidden, conflict } from '../utils/responseHelper.js';
 
 const getAll = async (req, res) => {
     try {
         const data = await Factura.findAll();
-        res.json(data);
+        success(res, data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
 const getOne = async (req, res) => {
     try {
         const row = await Factura.findById(req.params.id);
-        if (!row) return res.status(404).json({ message: "Factura no encontrada" });
-        res.json(row);
+        if (!row) return notFound(res, 'Factura');
+        success(res, row);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
 const store = async (req, res) => {
     try {
         const { pedido_id, numero_factura } = req.body;
-        if (!pedido_id || !numero_factura) return res.status(400).json({ message: "ID del pedido y numero de factura son obligatorios" });
+        if (!pedido_id || !numero_factura) return badRequest(res, 'ID del pedido y numero de factura son obligatorios');
         const id = await Factura.create(req.body);
-        res.status(201).json({ message: "Factura generada con éxito", id_factura: id });
+        success(res, { id_factura: id }, 'Factura generada con éxito', 201);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -38,10 +39,10 @@ const update = async (req, res) => {
     try {
         const { id } = req.params;
         const actualizado = await Factura.update(id, req.body);
-        if (!actualizado) return res.status(404).json({ message: "Factura no encontrada" });
-        res.json({ message: "Factura actualizada" });
+        if (!actualizado) return notFound(res, 'Factura');
+        success(res, null, 'Factura actualizada');
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -49,13 +50,13 @@ const destroy = async (req, res) => {
     try {
         const { id } = req.params;
         const eliminado = await Factura.delete(id);
-        if (!eliminado) return res.status(404).json({ message: "Factura no encontrada" });
-        res.json({ message: "Factura eliminada" });
+        if (!eliminado) return notFound(res, 'Factura');
+        success(res, null, 'Factura eliminada');
     } catch (error) {
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-            return res.status(400).json({ error: "No se puede eliminar esta factura porque tiene detalles asociados." });
+            return badRequest(res, 'No se puede eliminar esta factura porque tiene detalles asociados.');
         }
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 

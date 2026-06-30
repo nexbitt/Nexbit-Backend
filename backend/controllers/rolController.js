@@ -3,34 +3,35 @@
  * @description Controlador para la gestión de roles de usuario.
  */
 import Rol from '../models/rolModel.js';
+import { success, error as responseError, notFound, badRequest, unauthorized, forbidden, conflict } from '../utils/responseHelper.js';
 
 const getAll = async (req, res) => {
     try {
         const data = await Rol.findAll();
-        res.json(data);
+        success(res, data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
 const getOne = async (req, res) => {
     try {
         const row = await Rol.findById(req.params.id);
-        if (!row) return res.status(404).json({ message: "Rol no encontrado" });
-        res.json(row);
+        if (!row) return notFound(res, 'Rol');
+        success(res, row);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
 const store = async (req, res) => {
     try {
         const { nombre, descripcion } = req.body;
-        if (!nombre) return res.status(400).json({ message: "El nombre es obligatorio" });
+        if (!nombre) return badRequest(res, 'El nombre es obligatorio');
         const id = await Rol.create({ nombre, descripcion });
-        res.status(201).json({ message: "Rol creado con éxito", id_rol: id });
+        success(res, { id_rol: id }, 'Rol creado con éxito', 201);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -39,13 +40,13 @@ const update = async (req, res) => {
         const { id } = req.params;
         const { nombre, descripcion } = req.body;
 
-        if (!nombre) return res.status(400).json({ message: "El nombre es obligatorio" });
+        if (!nombre) return badRequest(res, 'El nombre es obligatorio');
 
         const actualizado = await Rol.update(id, { nombre, descripcion });
-        if (!actualizado) return res.status(404).json({ message: "Rol no encontrado" });
-        res.json({ message: "Rol actualizado" });
+        if (!actualizado) return notFound(res, 'Rol');
+        success(res, null, 'Rol actualizado');
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 

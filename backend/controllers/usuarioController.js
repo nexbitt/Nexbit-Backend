@@ -5,6 +5,7 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import Usuario from '../models/usuarioModel.js';
+import { success, error, notFound, badRequest, unauthorized, forbidden } from '../utils/responseHelper.js';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura';
 
@@ -24,19 +25,19 @@ function generarToken(payload) {
 const getAll = async (req, res) => {
     try {
         const data = await Usuario.findAll();
-        res.json(data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        success(res, data);
+    } catch (err) {
+        error(res, 'SERVER_ERROR', err.message);
     }
 };
 
 const getOne = async (req, res) => {
     try {
         const user = await Usuario.findById(req.params.id);
-        if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        if (!user) return notFound(res, 'Usuario');
+        success(res, user);
+    } catch (err) {
+        error(res, 'SERVER_ERROR', err.message);
     }
 };
 
@@ -44,13 +45,12 @@ const store = async (req, res) => {
     try {
         const { rol_id, nombre, email, password, tipo_documento, numero_documento, telefono, direccion } = req.body;
         if (!rol_id || !nombre || !email || !password) {
-            return res.status(400).json({ message: 'Faltan campos obligatorios' });
+            return badRequest(res, 'Faltan campos obligatorios');
         }
 
-        // Obtener el rol en base de datos para verificar si es administrativo
         const roleObj = await Usuario.findRoleById(rol_id);
         if (!roleObj) {
-            return res.status(400).json({ message: 'El rol especificado no existe.' });
+            return badRequest(res, 'El rol especificado no existe.');
         }
 
         const isRolAdministrativo = roleObj.nombre.toLowerCase().includes('admin') || 
@@ -58,43 +58,36 @@ const store = async (req, res) => {
 
         if (isRolAdministrativo) {
             let token = null;
-
-            // 1. Intentar leer desde la cookie httpOnly
             if (req.cookies && req.cookies.token) {
                 token = req.cookies.token;
             }
-
-            // 2. Fallback: leer desde el header Authorization
             if (!token) {
                 const authHeader = req.headers['authorization'];
                 if (authHeader && authHeader.startsWith('Bearer ')) {
                     token = authHeader.split(' ')[1];
                 }
             }
-
             if (!token) {
-                return res.status(401).json({ message: 'Acceso denegado. No se proporcionó un token de administrador para crear un usuario administrativo.' });
+                return unauthorized(res, 'Acceso denegado. No se proporcionó un token de administrador para crear un usuario administrativo.');
             }
-
             try {
                 const decoded = jwt.verify(token, SECRET_KEY);
-                // Validar que el creador sea realmente un administrador
                 const creador = await Usuario.findById(decoded.userId);
                 if (!creador || !creador.rol_nombre || !creador.rol_nombre.toLowerCase().includes('admin')) {
-                    return res.status(403).json({ message: 'Acceso denegado. Solo un administrador puede crear usuarios con privilegios administrativos.' });
+                    return forbidden(res, 'Solo un administrador puede crear usuarios con privilegios administrativos.');
                 }
             } catch (jwtError) {
                 if (jwtError.name === 'TokenExpiredError') {
-                    return res.status(401).json({ message: 'Token de administrador expirado. Por favor, inicia sesión de nuevo.' });
+                    return unauthorized(res, 'Token de administrador expirado. Por favor, inicia sesión de nuevo.');
                 }
-                return res.status(403).json({ message: 'Token de administrador inválido.' });
+                return forbidden(res, 'Token de administrador inválido.');
             }
         }
 
         const id = await Usuario.create({ rol_id, nombre, email, password, tipo_documento, numero_documento, telefono, direccion });
-        res.status(201).json({ message: 'Usuario creado con éxito', id_usuario: id });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        success(res, { id_usuario: id }, 'Usuario creado con éxito', 201);
+    } catch (err) {
+        error(res, 'SERVER_ERROR', err.message);
     }
 };
 
@@ -102,19 +95,19 @@ const update = async (req, res) => {
     try {
         const { id } = req.params;
         const actualizado = await Usuario.update(id, req.body);
-        if (!actualizado) return res.status(404).json({ message: 'No se encontró el registro para actualizar' });
-        res.json({ message: 'Usuario actualizado correctamente' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        if (!actualizado) return notFound(res, 'Usuario');
+        success(res, null, 'Usuario actualizado correctamente');
+    } catch (err) {
+        error(res, 'SERVER_ERROR', err.message);
     }
 };
 
 const getRoles = async (req, res) => {
     try {
         const roles = await Usuario.getRoles();
-        res.json(roles);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        success(res, roles);
+    } catch (err) {
+        error(res, 'SERVER_ERROR', err.message);
     }
 };
 
@@ -122,13 +115,13 @@ const destroy = async (req, res) => {
     try {
         const { id } = req.params;
         const eliminado = await Usuario.delete(id);
-        if (!eliminado) return res.status(404).json({ message: 'Usuario no encontrado' });
-        res.json({ message: 'Usuario eliminado físicamente' });
-    } catch (error) {
-        if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-            return res.status(400).json({ error: 'No se puede eliminar este usuario porque ya tiene registros asociados.' });
+        if (!eliminado) return notFound(res, 'Usuario');
+        success(res, null, 'Usuario eliminado físicamente');
+    } catch (err) {
+        if (err.code === 'ER_ROW_IS_REFERENCED_2') {
+            return badRequest(res, 'No se puede eliminar este usuario porque ya tiene registros asociados.');
         }
-        res.status(500).json({ error: error.message });
+        error(res, 'SERVER_ERROR', err.message);
     }
 };
 
@@ -140,122 +133,94 @@ const login = async (req, res) => {
 
         const passwordValida = user && await bcrypt.compare(password, user.password);
         if (!passwordValida) {
-            return res.status(401).json({ message: 'Correo o contraseña incorrectos' });
+            return unauthorized(res, 'Correo o contraseña incorrectos');
         }
         if (!user.activo) {
-            return res.status(403).json({ message: 'La cuenta está inactiva.' });
+            return forbidden(res, 'La cuenta está inactiva.');
         }
 
-        // Eliminar la contraseña del payload antes de firmar y de responder
         delete user.password;
 
         const payload = { userId: user.id_usuario, user: user.nombre, rol_id: user.rol_id };
         const token = generarToken(payload);
 
-        // Token en httpOnly cookie (mantenemos para compatibilidad con la WEB)
         res.cookie('token', token, cookieOptions);
 
-        // Se devuelve el token también en el body (para que el MÓVIL lo pueda guardar)
-        res.json({ 
-            message: '¡Inicio de sesión exitoso!', 
-            user,
-            token 
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        success(res, { user, token }, '¡Inicio de sesión exitoso!');
+    } catch (err) {
+        error(res, 'SERVER_ERROR', err.message);
     }
 };
 
-/**
- * GET /api/usuarios/me
- * Retorna los datos del usuario autenticado (extraídos del token por el middleware)
- */
 const getMe = async (req, res) => {
     try {
-        // req.usuario viene del middleware verificarToken
         const user = await Usuario.findById(req.usuario.userId);
-        if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+        if (!user) return notFound(res, 'Usuario');
 
         delete user.password;
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        success(res, user);
+    } catch (err) {
+        error(res, 'SERVER_ERROR', err.message);
     }
 };
 
-/**
- * POST /api/usuarios/logout
- * Limpia la httpOnly cookie del servidor
- */
 const logout = (req, res) => {
     res.clearCookie('token', { httpOnly: true, sameSite: 'lax' });
-    res.json({ message: 'Sesión cerrada correctamente' });
+    success(res, null, 'Sesión cerrada correctamente');
 };
 
-/**
- * POST /api/usuarios/verificar-contrasena
- * Verifica que la contraseña actual proporcionada coincida con la del usuario autenticado.
- * Utilizado por el frontend como paso de confirmación antes de permitir edición de datos.
- */
 const verificarContrasena = async (req, res) => {
     try {
         const { password } = req.body;
         if (!password) {
-            return res.status(400).json({ message: 'La contraseña es requerida' });
+            return badRequest(res, 'La contraseña es requerida');
         }
 
         const user = await Usuario.findById(req.usuario.userId);
         if (!user) {
-            return res.status(404).json({ message: 'Usuario no encontrado' });
+            return notFound(res, 'Usuario');
         }
 
         const valida = await bcrypt.compare(password, user.password);
         if (!valida) {
-            return res.status(401).json({ message: 'Contraseña incorrecta', valida: false });
+            return unauthorized(res, 'Contraseña incorrecta');
         }
 
-        res.json({ message: 'Identidad confirmada', valida: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        success(res, { valida: true }, 'Identidad confirmada');
+    } catch (err) {
+        error(res, 'SERVER_ERROR', err.message);
     }
 };
 
-/**
- * PUT /api/usuarios/:id  (sobrescrito)
- * Ahora requiere current_password en el body para validar la identidad
- * antes de aplicar cambios en los datos personales.
- */
 const updateSecure = async (req, res) => {
     try {
         const { id } = req.params;
         const { current_password, ...data } = req.body;
 
-        // Verificar que el usuario autenticado sea el mismo que se actualiza
         if (Number(id) !== req.usuario.userId) {
-            return res.status(403).json({ message: 'No puedes modificar los datos de otro usuario' });
+            return forbidden(res, 'No puedes modificar los datos de otro usuario');
         }
 
-        // Validar contraseña actual obligatoriamente
         if (!current_password) {
-            return res.status(400).json({ message: 'Debes proporcionar tu contraseña actual para guardar los cambios' });
+            return badRequest(res, 'Debes proporcionar tu contraseña actual para guardar los cambios');
         }
 
         const user = await Usuario.findById(id);
         if (!user) {
-            return res.status(404).json({ message: 'Usuario no encontrado' });
+            return notFound(res, 'Usuario');
         }
 
         const valida = await bcrypt.compare(current_password, user.password);
         if (!valida) {
-            return res.status(401).json({ message: 'Contraseña actual incorrecta. No se guardaron los cambios.' });
+            return unauthorized(res, 'Contraseña actual incorrecta. No se guardaron los cambios.');
         }
 
         const actualizado = await Usuario.update(id, data);
-        if (!actualizado) return res.status(404).json({ message: 'No se encontró el registro para actualizar' });
+        if (!actualizado) return notFound(res, 'Usuario');
 
-        res.json({ message: 'Usuario actualizado correctamente' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        success(res, null, 'Usuario actualizado correctamente');
+    } catch (err) {
+        error(res, 'SERVER_ERROR', err.message);
     }
 };
 

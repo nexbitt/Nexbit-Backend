@@ -1,5 +1,6 @@
 import prisma from '../config/prisma.js';
 import { getIO, emitNuevoPedidoDisponible } from '../socket.js';
+import { success, error as responseError, notFound, badRequest, unauthorized, forbidden, conflict } from '../utils/responseHelper.js';
 
 const adminController = {
     listarPedidos: async (req, res) => {
@@ -118,10 +119,10 @@ const adminController = {
                 };
             });
 
-            res.json(result);
+            success(res, result);
         } catch (error) {
             console.error('Error listar pedidos admin:', error);
-            res.status(500).json({ error: error.message });
+            responseError(res, 'SERVER_ERROR', error.message);
         }
     },
 
@@ -149,11 +150,10 @@ const adminController = {
             });
 
             if (!pedido) {
-                return res.status(404).json({ message: 'Pedido no encontrado' });
+                return notFound(res, 'Pedido');
             }
 
-            // Aplanar para compatibilidad con el frontend (mismo formato que findByIdWithDetails)
-            res.json({
+            success(res, {
                 ...pedido,
                 subtotal: Number(pedido.subtotal),
                 impuesto: Number(pedido.impuesto),
@@ -176,7 +176,7 @@ const adminController = {
             });
         } catch (error) {
             console.error('Error obtener pedido admin:', error);
-            res.status(500).json({ error: error.message });
+            responseError(res, 'SERVER_ERROR', error.message);
         }
     },
 
@@ -187,7 +187,7 @@ const adminController = {
             const adminId = req.usuario.userId;
 
             if (!accion || !['ACEPTAR', 'RECHAZAR', 'CONTACTAR'].includes(accion)) {
-                return res.status(400).json({ message: 'Acción inválida. Use: ACEPTAR, RECHAZAR o CONTACTAR' });
+                return badRequest(res, 'Acción inválida. Use: ACEPTAR, RECHAZAR o CONTACTAR');
             }
 
             const pedido = await prisma.pedidos.findUnique({
@@ -195,14 +195,14 @@ const adminController = {
             });
 
             if (!pedido) {
-                return res.status(404).json({ message: 'Pedido no encontrado' });
+                return notFound(res, 'Pedido');
             }
 
             const io = getIO();
 
             if (accion === 'ACEPTAR') {
                 if (pedido.estado !== 'EN_REVISION') {
-                    return res.status(409).json({ message: 'El pedido debe estar en EN_REVISION para aceptarlo' });
+                    return conflict(res, 'El pedido debe estar en EN_REVISION para aceptarlo');
                 }
 
                 await prisma.pedidos.update({
@@ -244,11 +244,11 @@ const adminController = {
                 });
                 emitNuevoPedidoDisponible(Number(id), {});
 
-                res.json({ message: 'Pedido aceptado. Ahora es visible para repartidores.' });
+                success(res, null, 'Pedido aceptado. Ahora es visible para repartidores.');
 
             } else if (accion === 'RECHAZAR') {
                 if (pedido.estado !== 'EN_REVISION') {
-                    return res.status(409).json({ message: 'El pedido debe estar en EN_REVISION para rechazarlo' });
+                    return conflict(res, 'El pedido debe estar en EN_REVISION para rechazarlo');
                 }
 
                 const motivo = nota || 'Pago rechazado';
@@ -287,11 +287,11 @@ const adminController = {
                     mensaje: `Tu pago ha sido rechazado: ${motivo}`
                 });
 
-                res.json({ message: 'Pedido rechazado. Se notificó al cliente.' });
+                success(res, null, 'Pedido rechazado. Se notificó al cliente.');
 
             } else if (accion === 'CONTACTAR') {
                 if (!nota || !nota.trim()) {
-                    return res.status(400).json({ message: 'Se requiere una nota para contactar al cliente' });
+                    return badRequest(res, 'Se requiere una nota para contactar al cliente');
                 }
 
                 await prisma.pedidos.update({
@@ -324,11 +324,11 @@ const adminController = {
                     mensaje: nota.trim()
                 });
 
-                res.json({ message: 'Nota enviada al cliente.' });
+                success(res, null, 'Nota enviada al cliente.');
             }
         } catch (error) {
             console.error('Error gestionar pedido:', error);
-            res.status(500).json({ error: error.message });
+            responseError(res, 'SERVER_ERROR', error.message);
         }
     }
 };

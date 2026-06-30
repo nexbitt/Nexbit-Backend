@@ -1,5 +1,6 @@
 import prisma from '../config/prisma.js';
 import { getIO } from '../socket.js';
+import { success, error as responseError, notFound, badRequest, unauthorized, forbidden, conflict } from '../utils/responseHelper.js';
 
 const emitStateChange = (pedidoId, estado, repartidorId) => {
   const io = getIO();
@@ -39,7 +40,7 @@ const obtenerDisponibles = async (req, res) => {
 
       return {
         id_pedido: p.id_pedido,
-        estado_fsm: 'DISPONIBLE',
+        fsm_estado: 'DISPONIBLE',
         cliente: p.usuario?.nombre || 'Desconocido',
         direccion: p.direccion_entrega || p.usuario?.direccion || '',
         telefono: p.usuario?.telefono || '',
@@ -56,10 +57,10 @@ const obtenerDisponibles = async (req, res) => {
       };
     });
 
-    res.json(disponibles);
+    success(res, disponibles);
   } catch (error) {
     console.error('Error al obtener pedidos disponibles:', error);
-    res.status(500).json({ error: 'Error obteniendo pedidos disponibles' });
+    responseError(res, 'SERVER_ERROR', 'Error obteniendo pedidos disponibles');
   }
 };
 
@@ -81,12 +82,12 @@ const obtenerActivo = async (req, res) => {
     });
 
     if (!pedido) {
-      return res.json(null);
+      return success(res, null);
     }
 
-    res.json({
+    success(res, {
       id_pedido: pedido.id_pedido,
-      estado_fsm: pedido.estado === 'ASIGNADO' ? 'EN_REPARTO' : 'EN_CAMINO',
+      fsm_estado: pedido.estado === 'ASIGNADO' ? 'EN_REPARTO' : 'EN_CAMINO',
       estado_db: pedido.estado,
       cliente: pedido.usuario?.nombre || 'Desconocido',
       direccion: pedido.direccion_entrega || pedido.usuario?.direccion || '',
@@ -101,7 +102,7 @@ const obtenerActivo = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al obtener pedido activo:', error);
-    res.status(500).json({ error: 'Error obteniendo pedido activo' });
+    responseError(res, 'SERVER_ERROR', 'Error obteniendo pedido activo');
   }
 };
 
@@ -119,7 +120,7 @@ const obtenerHistorial = async (req, res) => {
     const pedidoIds = interacciones.map((s) => s.pedido_id);
 
     if (pedidoIds.length === 0) {
-      return res.json([]);
+      return success(res, []);
     }
 
     const pedidos = await prisma.pedidos.findMany({
@@ -155,7 +156,7 @@ const obtenerHistorial = async (req, res) => {
 
         return {
           id_pedido: p.id_pedido,
-          estado_fsm: estadoHistorico,
+          fsm_estado: estadoHistorico,
           estado_actual: p.estado,
           cliente: p.usuario?.nombre || 'Desconocido',
           total: Number(p.total),
@@ -166,10 +167,10 @@ const obtenerHistorial = async (req, res) => {
         };
       });
 
-    res.json(historial);
+    success(res, historial);
   } catch (error) {
     console.error('Error al obtener historial:', error);
-    res.status(500).json({ error: 'Error obteniendo historial' });
+    responseError(res, 'SERVER_ERROR', 'Error obteniendo historial');
   }
 };
 
@@ -191,7 +192,7 @@ const tomarPedido = async (req, res) => {
     });
 
     if (result.count === 0) {
-      return res.status(409).json({ error: 'El pedido ya no está disponible.' });
+      return conflict(res, 'El pedido ya no está disponible.');
     }
 
     await prisma.seguimiento_pedido.create({
@@ -205,10 +206,10 @@ const tomarPedido = async (req, res) => {
     });
 
     emitStateChange(parseInt(id_pedido), 'EN_REPARTO', repartidorId);
-    res.json({ message: 'Pedido tomado exitosamente.' });
+    success(res, null, 'Pedido tomado exitosamente.');
   } catch (error) {
     console.error('Error al tomar pedido:', error);
-    res.status(500).json({ error: 'Error al tomar el pedido.' });
+    responseError(res, 'SERVER_ERROR', 'Error al tomar el pedido.');
   }
 };
 
@@ -226,7 +227,7 @@ const marcarEnCamino = async (req, res) => {
     });
 
     if (result.count === 0) {
-      return res.status(400).json({ error: 'No se pudo actualizar. Verifique el estado.' });
+      return badRequest(res, 'No se pudo actualizar. Verifique el estado.');
     }
 
     await prisma.seguimiento_pedido.create({
@@ -240,10 +241,10 @@ const marcarEnCamino = async (req, res) => {
     });
 
     emitStateChange(parseInt(id_pedido), 'EN_CAMINO', repartidorId);
-    res.json({ message: 'Estado actualizado: en camino.' });
+    success(res, null, 'Estado actualizado: en camino.');
   } catch (error) {
     console.error('Error al marcar en camino:', error);
-    res.status(500).json({ error: 'Error al actualizar estado.' });
+    responseError(res, 'SERVER_ERROR', 'Error al actualizar estado.');
   }
 };
 
@@ -264,7 +265,7 @@ const confirmarEntrega = async (req, res) => {
     });
 
     if (result.count === 0) {
-      return res.status(400).json({ error: 'No se pudo confirmar la entrega.' });
+      return badRequest(res, 'No se pudo confirmar la entrega.');
     }
 
     await prisma.seguimiento_pedido.create({
@@ -278,10 +279,10 @@ const confirmarEntrega = async (req, res) => {
     });
 
     emitStateChange(parseInt(id_pedido), 'ENTREGADO', repartidorId);
-    res.json({ message: 'Entrega confirmada exitosamente.' });
+    success(res, null, 'Entrega confirmada exitosamente.');
   } catch (error) {
     console.error('Error al confirmar entrega:', error);
-    res.status(500).json({ error: 'Error al confirmar la entrega.' });
+    responseError(res, 'SERVER_ERROR', 'Error al confirmar la entrega.');
   }
 };
 
@@ -299,7 +300,7 @@ const cancelarPedido = async (req, res) => {
     });
 
     if (!pedido) {
-      return res.status(400).json({ error: 'No se pudo cancelar el pedido.' });
+      return badRequest(res, 'No se pudo cancelar el pedido.');
     }
 
     const result = await prisma.pedidos.update({
@@ -312,7 +313,7 @@ const cancelarPedido = async (req, res) => {
     });
 
     if (!result) {
-      return res.status(400).json({ error: 'No se pudo cancelar el pedido.' });
+      return badRequest(res, 'No se pudo cancelar el pedido.');
     }
 
     await prisma.seguimiento_pedido.create({
@@ -326,10 +327,10 @@ const cancelarPedido = async (req, res) => {
     });
 
     emitStateChange(parseInt(id_pedido), 'DISPONIBLE', repartidorId);
-    res.json({ message: 'Pedido liberado. Ya está disponible para otros repartidores.' });
+    success(res, null, 'Pedido liberado. Ya está disponible para otros repartidores.');
   } catch (error) {
     console.error('Error al cancelar pedido:', error);
-    res.status(500).json({ error: 'Error al cancelar el pedido.' });
+    responseError(res, 'SERVER_ERROR', 'Error al cancelar el pedido.');
   }
 };
 
@@ -347,7 +348,7 @@ const reportarProblema = async (req, res) => {
     });
 
     if (!pedido) {
-      return res.status(404).json({ error: 'Pedido no encontrado o no asignado a usted.' });
+      return notFound(res, 'Pedido');
     }
 
     await prisma.seguimiento_pedido.create({
@@ -383,13 +384,10 @@ const reportarProblema = async (req, res) => {
       }
     }, timer);
 
-    res.json({
-      message: 'Problema reportado. Si no se resuelve en 5 minutos, se cancelará automáticamente.',
-      temporizador_minutos: 5,
-    });
+    success(res, { temporizador_minutos: 5 }, 'Problema reportado. Si no se resuelve en 5 minutos, se cancelará automáticamente.');
   } catch (error) {
     console.error('Error al reportar problema:', error);
-    res.status(500).json({ error: 'Error al reportar problema.' });
+    responseError(res, 'SERVER_ERROR', 'Error al reportar problema.');
   }
 };
 
@@ -424,10 +422,10 @@ const obtenerStats = async (req, res) => {
       }
     }
 
-    res.json({ disponibles, activo, entregados, cancelados });
+    success(res, { disponibles, activo, entregados, cancelados });
   } catch (error) {
     console.error('Error al obtener stats:', error);
-    res.status(500).json({ error: 'Error obteniendo estadísticas' });
+    responseError(res, 'SERVER_ERROR', 'Error obteniendo estadísticas');
   }
 };
 
@@ -460,10 +458,10 @@ const zonasCalientes = async (req, res) => {
         pedidos_recientes: conteo,
       }));
 
-    res.json(topZonas);
+    success(res, topZonas);
   } catch (error) {
     console.error('Error al calcular zonas calientes:', error);
-    res.status(500).json({ error: 'Error al calcular zonas calientes' });
+    responseError(res, 'SERVER_ERROR', 'Error al calcular zonas calientes');
   }
 };
 

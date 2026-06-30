@@ -6,15 +6,16 @@
 import Producto from '../models/productoModel.js';
 import { v2 as cloudinary } from 'cloudinary';
 import jwt from 'jsonwebtoken';
+import { success, error as responseError, notFound, badRequest, unauthorized, forbidden, conflict } from '../utils/responseHelper.js';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura';
 
 const getAll = async (req, res) => {
     try {
         const data = await Producto.findAll();
-        res.json(data);
+        success(res, data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -22,7 +23,6 @@ const getAll = async (req, res) => {
 const getPublic = async (req, res) => {
     try {
         const data = await Producto.findAllActive();
-        // Solo retornar campos públicos seguros requeridos. Bajo ninguna circunstancia exponer precio_compra ni stock_minimo.
         const safeData = data.map(({ id_producto, nombre, precio_venta, categoria_nombre, imagen_url, descripcion, stock_actual }) => ({
             id_producto,
             nombre,
@@ -32,16 +32,16 @@ const getPublic = async (req, res) => {
             descripcion,
             stock_actual
         }));
-        res.json(safeData);
+        success(res, safeData);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
 const getOne = async (req, res) => {
     try {
         const row = await Producto.findById(req.params.id);
-        if (!row) return res.status(404).json({ message: "Producto no encontrado" });
+        if (!row) return notFound(res, 'Producto');
 
         // Verificar si quien consulta tiene privilegios de Administrador
         let isAdmin = false;
@@ -73,14 +73,13 @@ const getOne = async (req, res) => {
         }
 
         if (isAdmin) {
-            res.json(row);
+            success(res, row);
         } else {
-            // Eliminar campos sensibles de costo y stock mínimo para evitar fugas de información
             const { precio_compra, stock_minimo, ...safeRow } = row;
-            res.json(safeRow);
+            success(res, safeRow);
         }
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -89,21 +88,21 @@ const store = async (req, res) => {
         const { nombre } = req.body;
         const sanitizedNombre = nombre?.trim();
         if (!sanitizedNombre || sanitizedNombre.length < 3) {
-            return res.status(400).json({ message: "El nombre debe tener al menos 3 caracteres" });
+            return badRequest(res, 'El nombre debe tener al menos 3 caracteres');
         }
 
         const { categoria_id, precio_compra, precio_venta } = req.body;
         if (!categoria_id || precio_compra === undefined || precio_venta === undefined) {
-            return res.status(400).json({ message: "La categoría y precios son obligatorios" });
+            return badRequest(res, 'La categoría y precios son obligatorios');
         }
 
         // req.file.path contiene la URL pública de Cloudinary
         const imagen_url = req.file ? (req.file.path || req.file.secure_url || req.file.url) : null;
 
         const id = await Producto.create({ ...req.body, nombre: sanitizedNombre, imagen_url });
-        res.status(201).json({ message: "Producto creado con éxito", id_producto: id });
+        success(res, { id_producto: id }, 'Producto creado con éxito', 201);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -133,13 +132,13 @@ const update = async (req, res) => {
         const updateData = { ...req.body, imagen_url };
         if (updateData.nombre) {
             updateData.nombre = updateData.nombre.trim();
-            if (updateData.nombre.length < 3) return res.status(400).json({ message: "El nombre debe tener al menos 3 caracteres" });
+            if (updateData.nombre.length < 3) return badRequest(res, 'El nombre debe tener al menos 3 caracteres');
         }
         const actualizado = await Producto.update(id, updateData);
-        if (!actualizado) return res.status(404).json({ message: "Producto no encontrado para actualizar" });
-        res.json({ message: "Producto actualizado correctamente" });
+        if (!actualizado) return notFound(res, 'Producto');
+        success(res, null, 'Producto actualizado correctamente');
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 
@@ -161,13 +160,13 @@ const destroy = async (req, res) => {
         }
 
         const eliminado = await Producto.delete(id);
-        if (!eliminado) return res.status(404).json({ message: "Producto no encontrado" });
-        res.json({ message: "Producto eliminado" });
+        if (!eliminado) return notFound(res, 'Producto');
+        success(res, null, 'Producto eliminado');
     } catch (error) {
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-            return res.status(400).json({ error: "No se puede eliminar este producto porque se usa en inventarios o pedidos." });
+            return badRequest(res, 'No se puede eliminar este producto porque se usa en inventarios o pedidos.');
         }
-        res.status(500).json({ error: error.message });
+        responseError(res, 'SERVER_ERROR', error.message);
     }
 };
 

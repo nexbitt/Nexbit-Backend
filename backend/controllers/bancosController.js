@@ -1,4 +1,5 @@
 import prisma from '../config/prisma.js';
+import { success, error as responseError, notFound, badRequest, unauthorized, forbidden, conflict } from '../utils/responseHelper.js';
 
 const bancosController = {
     listar: async (req, res) => {
@@ -7,10 +8,10 @@ const bancosController = {
                 where: { activo: true },
                 orderBy: { banco: 'asc' }
             });
-            res.json(cuentas);
+            success(res, cuentas);
         } catch (error) {
             console.error('Error listar cuentas bancarias:', error);
-            res.status(500).json({ error: error.message });
+            responseError(res, 'SERVER_ERROR', error.message);
         }
     }
 };

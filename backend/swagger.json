@@ -73,6 +73,24 @@
     }
   },
   "paths": {
+    "/{*path}": {
+      "options": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "*path",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/auth/recover-password": {
       "post": {
         "tags": [
