@@ -54,6 +54,14 @@ router.get('/usuario/:usuario_id/verificar-pendiente', verificarToken,
     pedidoController.verificarPedidoActivo
 );
 
+// Importante: /usuario/trash debe ir ANTES que /usuario/:usuario_id
+// para evitar que Express capture "trash" como un :usuario_id
+router.get('/usuario/trash', verificarToken,
+    /*  #swagger.tags = ['Pedidos']
+        #swagger.summary = 'Listar pedidos en la papelera del usuario' */
+    pedidoController.getTrash
+);
+
 router.get('/usuario/:usuario_id', verificarToken,
     /*  #swagger.tags = ['Pedidos']
         #swagger.summary = 'Obtener pedidos de un usuario' */
@@ -108,13 +116,6 @@ router.put('/:id/restaurar', verificarToken, verificarRol('Cliente', 'Administra
     /*  #swagger.tags = ['Pedidos']
         #swagger.summary = 'Restaurar pedido de la papelera' */
     pedidoController.restore
-);
-
-// Listar pedidos eliminados (papelera) del usuario autenticado
-router.get('/usuario/trash', verificarToken,
-    /*  #swagger.tags = ['Pedidos']
-        #swagger.summary = 'Listar pedidos en la papelera del usuario' */
-    pedidoController.getTrash
 );
 
 export default router;
