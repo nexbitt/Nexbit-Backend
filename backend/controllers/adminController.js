@@ -121,7 +121,7 @@ const adminController = {
             res.json(result);
         } catch (error) {
             console.error('Error listar pedidos admin:', error);
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     },
 
@@ -176,7 +176,7 @@ const adminController = {
             });
         } catch (error) {
             console.error('Error obtener pedido admin:', error);
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     },
 
@@ -328,7 +328,7 @@ const adminController = {
             }
         } catch (error) {
             console.error('Error gestionar pedido:', error);
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     }
 };

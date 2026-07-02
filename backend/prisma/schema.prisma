@@ -28,17 +28,17 @@ model usuarios {
   createdAt              DateTime?                @default(now()) @map("created_at")
   updatedAt              DateTime?                @default(now()) @updatedAt @map("updated_at")
   carrito                carrito[]
-  movimientos_inventario movimientos_inventario[]
-  pedidos_repartidor     pedidos[]                @relation("pedidos_repartidor_idTousuarios")
-  pedidos                pedidos[]
-  pedidos_admin_operador pedidos[]                @relation("pedidos_admin_operador")
-  seguimiento_operador   seguimiento_pedido[]     @relation("seguimiento_admin_operador")
-  seguimiento_pedido     seguimiento_pedido[]
-  conversaciones_cliente conversaciones[]          @relation("conversaciones_usuario")
-  conversaciones_admin   conversaciones[]          @relation("conversaciones_admin")
+  conversaciones_admin   conversaciones[]         @relation("conversaciones_admin")
+  conversaciones_cliente conversaciones[]         @relation("conversaciones_usuario")
   mensajes               mensajes[]
+  movimientos_inventario movimientos_inventario[]
   notificaciones         notificaciones[]
   password_resets        password_resets[]
+  pedidos_admin_operador pedidos[]                @relation("pedidos_admin_operador")
+  pedidos_repartidor     pedidos[]                @relation("pedidos_repartidor_idTousuarios")
+  pedidos                pedidos[]
+  seguimiento_operador   seguimiento_pedido[]     @relation("seguimiento_admin_operador")
+  seguimiento_pedido     seguimiento_pedido[]
   rol                    roles                    @relation(fields: [rol_id], references: [id_rol], map: "fk_usuario_rol")
 
   @@index([rol_id], map: "fk_usuario_rol")
@@ -87,14 +87,14 @@ model productos {
 }
 
 model configuracion_bancaria {
-  id_configuracion Int      @id @default(autoincrement())
-  banco            String   @db.VarChar(100)
-  tipo_cuenta      String   @db.VarChar(50)
-  numero_cuenta    String   @db.VarChar(50)
-  titular          String   @db.VarChar(150)
-  documento        String?  @db.VarChar(30)
-  descripcion      String?  @db.VarChar(255)
-  activo           Boolean? @default(true)
+  id_configuracion Int       @id @default(autoincrement())
+  banco            String    @db.VarChar(100)
+  tipo_cuenta      String    @db.VarChar(50)
+  numero_cuenta    String    @db.VarChar(50)
+  titular          String    @db.VarChar(150)
+  documento        String?   @db.VarChar(30)
+  descripcion      String?   @db.VarChar(255)
+  activo           Boolean?  @default(true)
   created_at       DateTime? @default(now())
   updated_at       DateTime? @default(now()) @updatedAt
 }
@@ -121,12 +121,12 @@ model pedidos {
   fecha_asignacion           DateTime?
   fecha_entrega_est          DateTime?
   fecha_entrega_real         DateTime?
+  conversacion               conversaciones?
   detalle_pedido             detalle_pedido[]
   facturas                   facturas[]
-  conversacion               conversaciones?
+  admin_operador             usuarios?            @relation("pedidos_admin_operador", fields: [admin_id_operador], references: [id_usuario], onUpdate: Restrict, map: "fk_ped_admin_operador")
   repartidor                 usuarios?            @relation("pedidos_repartidor_idTousuarios", fields: [repartidor_id], references: [id_usuario], onDelete: Restrict, onUpdate: Restrict, map: "fk_ped_repartidor")
   usuario                    usuarios             @relation(fields: [usuario_id], references: [id_usuario], onUpdate: Restrict, map: "fk_ped_user")
-  admin_operador             usuarios?            @relation("pedidos_admin_operador", fields: [admin_id_operador], references: [id_usuario], onDelete: SetNull, onUpdate: Restrict, map: "fk_ped_admin_operador")
   seguimiento_pedido         seguimiento_pedido[]
 
   @@index([usuario_id], map: "fk_ped_user")
@@ -187,7 +187,7 @@ model movimientos_inventario {
   usuarios        usuarios                               @relation(fields: [usuario_id], references: [id_usuario], onUpdate: Restrict, map: "fk_mov_user")
 
   @@index([producto_id], map: "fk_mov_producto")
-  @@index([usuario_id], map: "fk_mov_usuario")
+  @@index([usuario_id], map: "fk_mov_user")
 }
 
 model seguimiento_pedido {
@@ -201,13 +201,72 @@ model seguimiento_pedido {
   admin_id_operador        Int?
   descripcion_cambio       String?                             @db.VarChar(500)
   fecha                    DateTime?                           @default(now())
+  admin_operador           usuarios?                           @relation("seguimiento_admin_operador", fields: [admin_id_operador], references: [id_usuario], onUpdate: Restrict, map: "fk_seg_admin_operador")
   pedidos                  pedidos                             @relation(fields: [pedido_id], references: [id_pedido], onDelete: Cascade, onUpdate: Restrict, map: "fk_seg_pedido")
   usuario                  usuarios                            @relation(fields: [cambiado_por], references: [id_usuario], onUpdate: Restrict, map: "fk_seg_usuario")
-  admin_operador           usuarios?                           @relation("seguimiento_admin_operador", fields: [admin_id_operador], references: [id_usuario], onDelete: SetNull, onUpdate: Restrict, map: "fk_seg_admin_operador")
 
   @@index([pedido_id], map: "fk_seg_pedido")
   @@index([cambiado_por], map: "fk_seg_usuario")
   @@index([admin_id_operador], map: "fk_seg_admin_operador")
+}
+
+model conversaciones {
+  id_conversacion Int        @id @default(autoincrement())
+  pedido_id       Int        @unique
+  usuario_id      Int
+  admin_id        Int?
+  created_at      DateTime?  @default(now())
+  updated_at      DateTime?  @default(now()) @updatedAt
+  admin           usuarios?  @relation("conversaciones_admin", fields: [admin_id], references: [id_usuario], onUpdate: Restrict, map: "fk_conv_admin")
+  pedido          pedidos    @relation(fields: [pedido_id], references: [id_pedido], onDelete: Cascade, map: "fk_conv_pedido")
+  usuario         usuarios   @relation("conversaciones_usuario", fields: [usuario_id], references: [id_usuario], onUpdate: Restrict, map: "fk_conv_usuario")
+  mensajes        mensajes[]
+
+  @@index([pedido_id], map: "fk_conv_pedido")
+  @@index([usuario_id], map: "fk_conv_usuario")
+  @@index([admin_id], map: "fk_conv_admin")
+}
+
+model mensajes {
+  id_mensaje      Int            @id @default(autoincrement())
+  conversacion_id Int
+  remitente_id    Int
+  mensaje         String         @db.Text
+  leido           Boolean        @default(false)
+  created_at      DateTime?      @default(now())
+  conversacion    conversaciones @relation(fields: [conversacion_id], references: [id_conversacion], onDelete: Cascade, map: "fk_msg_conv")
+  remitente       usuarios       @relation(fields: [remitente_id], references: [id_usuario], onUpdate: Restrict, map: "fk_msg_remitente")
+
+  @@index([conversacion_id], map: "fk_msg_conv")
+  @@index([remitente_id], map: "fk_msg_remitente")
+}
+
+model password_resets {
+  id_reset   Int       @id @default(autoincrement())
+  usuario_id Int
+  otp_hash   String    @db.VarChar(255)
+  expires_at DateTime
+  verified   Boolean   @default(false)
+  attempts   Int       @default(0)
+  created_at DateTime? @default(now())
+  usuario    usuarios  @relation(fields: [usuario_id], references: [id_usuario], onDelete: Cascade, map: "fk_password_resets_usuario")
+
+  @@index([usuario_id], map: "fk_password_resets_usuario")
+}
+
+model notificaciones {
+  id_notificacion Int               @id @default(autoincrement())
+  usuario_id      Int
+  tipo            tipo_notificacion
+  titulo          String            @db.VarChar(200)
+  mensaje         String?           @db.Text
+  pedido_id       Int?
+  leido           Boolean           @default(false)
+  created_at      DateTime?         @default(now())
+  usuario         usuarios          @relation(fields: [usuario_id], references: [id_usuario], onDelete: Cascade, map: "fk_notif_usuario")
+
+  @@index([usuario_id], map: "fk_notif_usuario")
+  @@index([leido], map: "idx_notif_leido")
 }
 
 enum EstadoFactura {
@@ -270,63 +329,4 @@ enum tipo_notificacion {
   PEDIDO_ASIGNADO
   PEDIDO_ACEPTADO
   PEDIDO_EN_CAMINO
-}
-
-model conversaciones {
-  id_conversacion Int        @id @default(autoincrement())
-  pedido_id       Int        @unique
-  usuario_id      Int
-  admin_id        Int?
-  created_at      DateTime?  @default(now())
-  updated_at      DateTime?  @default(now()) @updatedAt
-  pedido          pedidos    @relation(fields: [pedido_id], references: [id_pedido], onDelete: Cascade, map: "fk_conv_pedido")
-  usuario         usuarios   @relation("conversaciones_usuario", fields: [usuario_id], references: [id_usuario], onUpdate: Restrict, map: "fk_conv_usuario")
-  admin           usuarios?  @relation("conversaciones_admin", fields: [admin_id], references: [id_usuario], onUpdate: Restrict, map: "fk_conv_admin")
-  mensajes        mensajes[]
-
-  @@index([pedido_id], map: "fk_conv_pedido")
-  @@index([usuario_id], map: "fk_conv_usuario")
-  @@index([admin_id], map: "fk_conv_admin")
-}
-
-model mensajes {
-  id_mensaje       Int             @id @default(autoincrement())
-  conversacion_id  Int
-  remitente_id     Int
-  mensaje          String          @db.Text
-  leido            Boolean         @default(false)
-  created_at       DateTime?       @default(now())
-  conversacion     conversaciones  @relation(fields: [conversacion_id], references: [id_conversacion], onDelete: Cascade, map: "fk_msg_conv")
-  remitente        usuarios        @relation(fields: [remitente_id], references: [id_usuario], onUpdate: Restrict, map: "fk_msg_remitente")
-
-  @@index([conversacion_id], map: "fk_msg_conv")
-  @@index([remitente_id], map: "fk_msg_remitente")
-}
-
-model password_resets {
-  id_reset   Int       @id @default(autoincrement())
-  usuario_id Int
-  otp_hash   String    @db.VarChar(255)
-  expires_at DateTime
-  verified   Boolean   @default(false)
-  attempts   Int       @default(0)
-  created_at DateTime? @default(now())
-  usuario    usuarios  @relation(fields: [usuario_id], references: [id_usuario], onDelete: Cascade, map: "fk_password_resets_usuario")
-
-  @@index([usuario_id], map: "fk_password_resets_usuario")
-}
-
-model notificaciones {
-  id_notificacion Int                @id @default(autoincrement())
-  usuario_id      Int
-  tipo            tipo_notificacion
-  titulo          String             @db.VarChar(200)
-  mensaje         String?            @db.Text
-  pedido_id       Int?
-  leido           Boolean            @default(false)
-  created_at      DateTime?          @default(now())
-  usuario         usuarios           @relation(fields: [usuario_id], references: [id_usuario], onDelete: Cascade, map: "fk_notif_usuario")
-
-  @@index([usuario_id], map: "fk_notif_usuario")
-  @@index([leido], map: "idx_notif_leido")
 }

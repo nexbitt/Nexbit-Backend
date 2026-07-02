@@ -9,7 +9,7 @@ const getAll = async (req, res) => {
         const data = await prisma.roles.findMany({ orderBy: { id_rol: 'asc' } });
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -19,7 +19,7 @@ const getOne = async (req, res) => {
         if (!row) return res.status(404).json({ message: "Rol no encontrado" });
         res.json(row);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -30,7 +30,7 @@ const store = async (req, res) => {
         const result = await prisma.roles.create({ data: { nombre, descripcion } });
         res.status(201).json({ message: "Rol creado con éxito", id_rol: result.id_rol });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -45,7 +45,7 @@ const update = async (req, res) => {
         if (!result.count) return res.status(404).json({ message: "Rol no encontrado" });
         res.json({ message: "Rol actualizado" });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 

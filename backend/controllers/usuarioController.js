@@ -39,7 +39,7 @@ const getAll = async (req, res) => {
         const data = rows.map(u => ({ ...u, rol_nombre: u.rol?.nombre, rol: undefined }));
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -52,7 +52,7 @@ const getOne = async (req, res) => {
         if (!u) return res.status(404).json({ message: 'Usuario no encontrado' });
         res.json({ ...u, rol_nombre: u.rol?.nombre });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -122,7 +122,7 @@ const store = async (req, res) => {
         });
         res.status(201).json({ message: 'Usuario creado con éxito', id_usuario: result.id_usuario });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -136,7 +136,7 @@ const update = async (req, res) => {
         if (!actualizado.count) return res.status(404).json({ message: 'No se encontró el registro para actualizar' });
         res.json({ message: 'Usuario actualizado correctamente' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -145,7 +145,7 @@ const getRoles = async (req, res) => {
         const roles = await prisma.roles.findMany();
         res.json(roles);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -159,7 +159,7 @@ const destroy = async (req, res) => {
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {
             return res.status(400).json({ error: 'No se puede eliminar este usuario porque ya tiene registros asociados.' });
         }
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -193,7 +193,7 @@ const login = async (req, res) => {
             token
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -208,7 +208,7 @@ const getMe = async (req, res) => {
         delete user.password;
         res.json(user);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -240,7 +240,7 @@ const verificarContrasena = async (req, res) => {
 
         res.json({ message: 'Identidad confirmada', valida: true });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -294,7 +294,7 @@ const updateSecure = async (req, res) => {
 
         res.json({ message: 'Usuario actualizado correctamente' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 

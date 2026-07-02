@@ -35,7 +35,7 @@ export const getVentas = async (req, res) => {
         `);
         res.json(rows);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -69,7 +69,7 @@ export const getInventario = async (req, res) => {
         `);
         res.json(rows);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -96,7 +96,7 @@ export const getSeguridad = async (req, res) => {
         `);
         res.json(rows);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -123,7 +123,7 @@ export const getCarritos = async (req, res) => {
         `);
         res.json(rows);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -165,7 +165,7 @@ export const getRepartidores = async (req, res) => {
         `);
         res.json(rows);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -193,7 +193,7 @@ export const getVentasKpis = async (req, res) => {
         `);
         res.json({ ...rows[0], top_productos: top });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -220,7 +220,7 @@ export const getInventarioKpis = async (req, res) => {
         `);
         res.json({ ...rows[0], top_margen: top });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -242,7 +242,7 @@ export const getSeguridadKpis = async (req, res) => {
         `);
         res.json({ ...rows[0], por_rol: porRol });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -258,7 +258,7 @@ export const getCarritosKpis = async (req, res) => {
         `);
         res.json(rows[0]);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -283,6 +283,6 @@ export const getRepartidoresKpis = async (req, res) => {
         `);
         res.json({ ...rows[0], por_repartidor: porRep });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };

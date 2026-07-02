@@ -1,6 +1,7 @@
 import prisma from '../config/prisma.js';
 import { v2 as cloudinary } from 'cloudinary';
 import jwt from 'jsonwebtoken';
+import { uploadToCloudinary } from '../middleware/uploadMiddleware.js';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura';
 
@@ -27,7 +28,7 @@ const getAll = async (req, res) => {
         const data = rows.map(mapProducto);
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -50,7 +51,7 @@ const getPublic = async (req, res) => {
         }));
         res.json(safeData);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -94,7 +95,7 @@ const getOne = async (req, res) => {
             res.json(safeRow);
         }
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -111,7 +112,12 @@ const store = async (req, res) => {
             return res.status(400).json({ message: "La categoría y precios son obligatorios" });
         }
 
-        const imagen_url = req.file ? (req.file.path || req.file.secure_url || req.file.url) : null;
+        const imagen_url = req.file
+            ? (await uploadToCloudinary(req.file.buffer, 'rematespaisa/productos', {
+                allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+                transformation: [{ width: 800, height: 800, crop: 'limit' }, { quality: 'auto' }]
+              })).secure_url || null
+            : null;
 
         const result = await prisma.productos.create({
             data: {
@@ -129,7 +135,7 @@ const store = async (req, res) => {
         });
         res.status(201).json({ message: "Producto creado con éxito", id_producto: result.id_producto });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -139,7 +145,11 @@ const update = async (req, res) => {
 
         let imagen_url = req.body.imagen_url;
         if (req.file) {
-            imagen_url = req.file.path || req.file.secure_url || req.file.url;
+            const cloudResult = await uploadToCloudinary(req.file.buffer, 'rematespaisa/productos', {
+                allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+                transformation: [{ width: 800, height: 800, crop: 'limit' }, { quality: 'auto' }]
+            });
+            imagen_url = cloudResult.secure_url || cloudResult.url;
 
             const p = await prisma.productos.findUnique({
                 where: { id_producto: Number(id) },
@@ -181,7 +191,7 @@ const update = async (req, res) => {
         if (!result.count) return res.status(404).json({ message: "Producto no encontrado para actualizar" });
         res.json({ message: "Producto actualizado correctamente" });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -211,7 +221,7 @@ const destroy = async (req, res) => {
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {
             return res.status(400).json({ error: "No se puede eliminar este producto porque se usa en inventarios o pedidos." });
         }
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
