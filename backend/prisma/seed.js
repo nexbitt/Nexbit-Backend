@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('Seeding database...');
 
   const hash = await bcrypt.hash('123456', 10);
 
@@ -173,7 +173,7 @@ async function main() {
     { producto_id: 4,  usuario_id: 1, tipo_movimiento: 'COMPRA',  cantidad: 20,  referencia: 'Reabastecimiento Parlante BT' },
   ]});
 
-  console.log('✅ Seed completed successfully');
+  console.log('Seed completed successfully');
 }
 
 main()

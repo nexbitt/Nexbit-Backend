@@ -2,11 +2,11 @@
  * @file proveedorController.js
  * @description Controlador para la gestión de proveedores.
  */
-import Proveedor from '../models/proveedorModel.js';
+import prisma from '../config/prisma.js';
 
 const getAll = async (req, res) => {
     try {
-        const data = await Proveedor.findAll();
+        const data = await prisma.proveedores.findMany({ orderBy: { id_proveedor: 'asc' } });
         res.json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -15,7 +15,7 @@ const getAll = async (req, res) => {
 
 const getOne = async (req, res) => {
     try {
-        const row = await Proveedor.findById(req.params.id);
+        const row = await prisma.proveedores.findUnique({ where: { id_proveedor: Number(req.params.id) } });
         if (!row) return res.status(404).json({ message: "Proveedor no encontrado" });
         res.json(row);
     } catch (error) {
@@ -29,8 +29,8 @@ const store = async (req, res) => {
         if (!nit || !nombre) return res.status(400).json({ message: "NIT y Nombre son obligatorios" });
         const sanitizedNombre = nombre.trim();
         if (sanitizedNombre.length < 3) return res.status(400).json({ message: "El nombre debe tener al menos 3 caracteres" });
-        const id = await Proveedor.create({ nit: nit.trim(), nombre: sanitizedNombre, telefono: telefono?.trim(), correo: correo?.trim(), direccion: direccion?.trim() });
-        res.status(201).json({ message: "Proveedor creado con éxito", id_proveedor: id });
+        const result = await prisma.proveedores.create({ data: { nit: nit.trim(), nombre: sanitizedNombre, telefono: telefono?.trim(), correo: correo?.trim(), direccion: direccion?.trim(), activo: 1 } });
+        res.status(201).json({ message: "Proveedor creado con éxito", id_proveedor: result.id_proveedor });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -48,8 +48,8 @@ const update = async (req, res) => {
         if (data.telefono) data.telefono = data.telefono.trim();
         if (data.correo) data.correo = data.correo.trim();
         if (data.direccion) data.direccion = data.direccion.trim();
-        const actualizado = await Proveedor.update(id, data);
-        if (!actualizado) return res.status(404).json({ message: "Proveedor no encontrado para actualizar" });
+        const result = await prisma.proveedores.updateMany({ where: { id_proveedor: Number(id) }, data });
+        if (!result.count) return res.status(404).json({ message: "Proveedor no encontrado para actualizar" });
         res.json({ message: "Proveedor actualizado correctamente" });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -59,8 +59,8 @@ const update = async (req, res) => {
 const destroy = async (req, res) => {
     try {
         const { id } = req.params;
-        const eliminado = await Proveedor.delete(id);
-        if (!eliminado) return res.status(404).json({ message: "Proveedor no encontrado" });
+        const result = await prisma.proveedores.deleteMany({ where: { id_proveedor: Number(id) } });
+        if (!result.count) return res.status(404).json({ message: "Proveedor no encontrado" });
         res.json({ message: "Proveedor eliminado" });
     } catch (error) {
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {

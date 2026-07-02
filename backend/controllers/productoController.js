@@ -1,28 +1,44 @@
-/**
- * @file productoController.js
- * @description Controlador para las operaciones CRUD de productos.
- * Incluye la lógica de integración con Cloudinary para imágenes.
- */
-import Producto from '../models/productoModel.js';
+import prisma from '../config/prisma.js';
 import { v2 as cloudinary } from 'cloudinary';
 import jwt from 'jsonwebtoken';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura';
 
+const includeRelations = {
+    categoria: { select: { nombre: true } },
+    proveedor:  { select: { nombre: true } }
+};
+
+const mapProducto = (p) => ({
+    ...p,
+    activo: p.activo ? 1 : 0,
+    categoria_nombre: p.categoria?.nombre,
+    proveedor_nombre: p.proveedor?.nombre,
+    categoria: undefined,
+    proveedor: undefined
+});
+
 const getAll = async (req, res) => {
     try {
-        const data = await Producto.findAll();
+        const rows = await prisma.productos.findMany({
+            orderBy: { id_producto: 'asc' },
+            include: includeRelations
+        });
+        const data = rows.map(mapProducto);
         res.json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
-// ── Catálogo público: solo activos, sin token ──────────────────────
 const getPublic = async (req, res) => {
     try {
-        const data = await Producto.findAllActive();
-        // Solo retornar campos públicos seguros requeridos. Bajo ninguna circunstancia exponer precio_compra ni stock_minimo.
+        const rows = await prisma.productos.findMany({
+            where: { activo: true },
+            orderBy: { id_producto: 'asc' },
+            include: includeRelations
+        });
+        const data = rows.map(mapProducto);
         const safeData = data.map(({ id_producto, nombre, precio_venta, categoria_nombre, imagen_url, descripcion, stock_actual }) => ({
             id_producto,
             nombre,
@@ -40,19 +56,20 @@ const getPublic = async (req, res) => {
 
 const getOne = async (req, res) => {
     try {
-        const row = await Producto.findById(req.params.id);
-        if (!row) return res.status(404).json({ message: "Producto no encontrado" });
+        const p = await prisma.productos.findUnique({
+            where: { id_producto: Number(req.params.id) },
+            include: includeRelations
+        });
+        if (!p) return res.status(404).json({ message: "Producto no encontrado" });
+        const row = mapProducto(p);
 
-        // Verificar si quien consulta tiene privilegios de Administrador
         let isAdmin = false;
         let token = null;
 
-        // 1. Intentar leer desde la cookie httpOnly
         if (req.cookies && req.cookies.token) {
             token = req.cookies.token;
         }
 
-        // 2. Intentar leer desde el header Authorization
         if (!token) {
             const authHeader = req.headers['authorization'];
             if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -63,19 +80,16 @@ const getOne = async (req, res) => {
         if (token) {
             try {
                 const decoded = jwt.verify(token, SECRET_KEY);
-                // rol_id = 1 es Administrador
                 if (decoded && decoded.rol_id === 1) {
                     isAdmin = true;
                 }
             } catch (_) {
-                // Token inválido o expirado, tratar como invitado
             }
         }
 
         if (isAdmin) {
             res.json(row);
         } else {
-            // Eliminar campos sensibles de costo y stock mínimo para evitar fugas de información
             const { precio_compra, stock_minimo, ...safeRow } = row;
             res.json(safeRow);
         }
@@ -97,11 +111,23 @@ const store = async (req, res) => {
             return res.status(400).json({ message: "La categoría y precios son obligatorios" });
         }
 
-        // req.file.path contiene la URL pública de Cloudinary
         const imagen_url = req.file ? (req.file.path || req.file.secure_url || req.file.url) : null;
 
-        const id = await Producto.create({ ...req.body, nombre: sanitizedNombre, imagen_url });
-        res.status(201).json({ message: "Producto creado con éxito", id_producto: id });
+        const result = await prisma.productos.create({
+            data: {
+                categoria_id: categoria_id ? Number(categoria_id) : null,
+                proveedor_id: req.body.proveedor_id ? Number(req.body.proveedor_id) : null,
+                nombre: sanitizedNombre,
+                descripcion: req.body.descripcion || '',
+                imagen_url: imagen_url || null,
+                precio_compra: Number(precio_compra),
+                precio_venta: Number(precio_venta),
+                stock_actual: req.body.stock_actual != null ? Number(req.body.stock_actual) : 0,
+                stock_minimo: req.body.stock_minimo != null ? Number(req.body.stock_minimo) : 0,
+                activo: true
+            }
+        });
+        res.status(201).json({ message: "Producto creado con éxito", id_producto: result.id_producto });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -111,21 +137,22 @@ const update = async (req, res) => {
     try {
         const { id } = req.params;
 
-        let imagen_url = req.body.imagen_url; // URL anterior si no cambió
+        let imagen_url = req.body.imagen_url;
         if (req.file) {
-            imagen_url = req.file.path || req.file.secure_url || req.file.url; // Nueva imagen subida a Cloudinary
+            imagen_url = req.file.path || req.file.secure_url || req.file.url;
 
-            // Borrar la imagen anterior de Cloudinary para no acumular archivos
-            const productoActual = await Producto.findById(id);
+            const p = await prisma.productos.findUnique({
+                where: { id_producto: Number(id) },
+                include: includeRelations
+            });
+            const productoActual = p ? mapProducto(p) : null;
             if (productoActual?.imagen_url) {
                 try {
                     const urlParts = productoActual.imagen_url.split('/');
-                    // Extract rematespaisa/productos/filename without extension
                     const folderAndFile = urlParts.slice(-3).join('/');
                     const publicId = folderAndFile.substring(0, folderAndFile.lastIndexOf('.'));
                     await cloudinary.uploader.destroy(publicId);
                 } catch (_) {
-                    // No interrumpir el flujo si falla la limpieza
                 }
             }
         }
@@ -135,8 +162,23 @@ const update = async (req, res) => {
             updateData.nombre = updateData.nombre.trim();
             if (updateData.nombre.length < 3) return res.status(400).json({ message: "El nombre debe tener al menos 3 caracteres" });
         }
-        const actualizado = await Producto.update(id, updateData);
-        if (!actualizado) return res.status(404).json({ message: "Producto no encontrado para actualizar" });
+
+        const result = await prisma.productos.updateMany({
+            where: { id_producto: Number(id) },
+            data: {
+                categoria_id: updateData.categoria_id != null ? Number(updateData.categoria_id) : undefined,
+                proveedor_id: updateData.proveedor_id != null ? Number(updateData.proveedor_id) : undefined,
+                nombre: updateData.nombre,
+                descripcion: updateData.descripcion,
+                imagen_url: updateData.imagen_url !== undefined ? updateData.imagen_url : undefined,
+                precio_compra: updateData.precio_compra != null ? Number(updateData.precio_compra) : undefined,
+                precio_venta: updateData.precio_venta != null ? Number(updateData.precio_venta) : undefined,
+                stock_actual: updateData.stock_actual != null ? Number(updateData.stock_actual) : undefined,
+                stock_minimo: updateData.stock_minimo != null ? Number(updateData.stock_minimo) : undefined,
+                activo: updateData.activo !== undefined ? Boolean(Number(updateData.activo)) : undefined,
+            }
+        });
+        if (!result.count) return res.status(404).json({ message: "Producto no encontrado para actualizar" });
         res.json({ message: "Producto actualizado correctamente" });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -147,8 +189,11 @@ const destroy = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Borrar imagen de Cloudinary antes de eliminar el producto
-        const producto = await Producto.findById(id);
+        const p = await prisma.productos.findUnique({
+            where: { id_producto: Number(id) },
+            include: includeRelations
+        });
+        const producto = p ? mapProducto(p) : null;
         if (producto?.imagen_url) {
             try {
                 const urlParts = producto.imagen_url.split('/');
@@ -156,12 +201,11 @@ const destroy = async (req, res) => {
                 const publicId = folderAndFile.substring(0, folderAndFile.lastIndexOf('.'));
                 await cloudinary.uploader.destroy(publicId);
             } catch (_) {
-                // No interrumpir el flujo si falla la limpieza
             }
         }
 
-        const eliminado = await Producto.delete(id);
-        if (!eliminado) return res.status(404).json({ message: "Producto no encontrado" });
+        const result = await prisma.productos.deleteMany({ where: { id_producto: Number(id) } });
+        if (!result.count) return res.status(404).json({ message: "Producto no encontrado" });
         res.json({ message: "Producto eliminado" });
     } catch (error) {
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {

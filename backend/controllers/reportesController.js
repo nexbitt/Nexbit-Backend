@@ -1,13 +1,13 @@
 /**
  * @file reportesController.js
- * @description Controlador con las 5 queries de reportes ejecutadas via db.js (mysql2).
+ * @description Controlador con las 5 queries de reportes ejecutadas via Prisma $queryRawUnsafe.
  */
-import db from '../config/db.js';
+import prisma from '../config/prisma.js';
 
 // ── 1. Ventas y Facturación ───────────────────────────────────────────────────
 export const getVentas = async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const rows = await prisma.$queryRawUnsafe(`
             SELECT 
                 f.numero_factura                                AS Factura_No,
                 DATE_FORMAT(f.fecha_emision, '%d/%m/%Y')        AS Fecha_Venta,
@@ -42,7 +42,7 @@ export const getVentas = async (req, res) => {
 // ── 2. Inventario, Stock y Ganancias ─────────────────────────────────────────
 export const getInventario = async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const rows = await prisma.$queryRawUnsafe(`
             SELECT 
                 p.id_producto                                               AS ID,
                 p.nombre                                                    AS Producto,
@@ -76,7 +76,7 @@ export const getInventario = async (req, res) => {
 // ── 3. Seguridad, Roles y Accesos ─────────────────────────────────────────────
 export const getSeguridad = async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const rows = await prisma.$queryRawUnsafe(`
             SELECT 
                 u.id_usuario                                        AS ID_User,
                 u.nombre                                            AS Nombre_Usuario,
@@ -103,7 +103,7 @@ export const getSeguridad = async (req, res) => {
 // ── 4. Carritos Activos ───────────────────────────────────────────────────────
 export const getCarritos = async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const rows = await prisma.$queryRawUnsafe(`
             SELECT 
                 IFNULL(u.nombre, 'Invitado')            AS Usuario,
                 IFNULL(car.session_id, '—')             AS Session_ID,
@@ -130,7 +130,7 @@ export const getCarritos = async (req, res) => {
 // ── 5. Repartidores y Pedidos ────────────────────────────────────────────────
 export const getRepartidores = async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const rows = await prisma.$queryRawUnsafe(`
             SELECT 
                 rep.id_usuario                                          AS ID_Repartidor,
                 rep.nombre                                              AS Repartidor,
@@ -172,7 +172,7 @@ export const getRepartidores = async (req, res) => {
 // ── KPIs ────────────────────────────────────────────────────────────────────────
 export const getVentasKpis = async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const rows = await prisma.$queryRawUnsafe(`
             SELECT
                 COUNT(DISTINCT f.numero_factura) AS total_tickets,
                 COALESCE(SUM(f.total), 0) AS total_ingresos,
@@ -199,7 +199,7 @@ export const getVentasKpis = async (req, res) => {
 
 export const getInventarioKpis = async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const rows = await prisma.$queryRawUnsafe(`
             SELECT
                 COUNT(*) AS total_productos,
                 SUM(CASE WHEN p.stock_actual = 0 THEN 1 ELSE 0 END) AS agotados,
@@ -226,7 +226,7 @@ export const getInventarioKpis = async (req, res) => {
 
 export const getSeguridadKpis = async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const rows = await prisma.$queryRawUnsafe(`
             SELECT
                 COUNT(*) AS total_usuarios,
                 SUM(CASE WHEN u.activo = TRUE THEN 1 ELSE 0 END) AS activos,
@@ -248,7 +248,7 @@ export const getSeguridadKpis = async (req, res) => {
 
 export const getCarritosKpis = async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const rows = await prisma.$queryRawUnsafe(`
             SELECT
                 COUNT(*) AS total_items,
                 COALESCE(SUM(car.cantidad * p.precio_venta), 0) AS valor_potencial,
@@ -264,7 +264,7 @@ export const getCarritosKpis = async (req, res) => {
 
 export const getRepartidoresKpis = async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const rows = await prisma.$queryRawUnsafe(`
             SELECT
                 COUNT(CASE WHEN ped.id_pedido IS NOT NULL THEN 1 END) AS total_pedidos,
                 COUNT(CASE WHEN ped.fecha_entrega_real IS NOT NULL AND ped.fecha_entrega_real <= ped.fecha_entrega_est THEN 1 END) AS a_tiempo,

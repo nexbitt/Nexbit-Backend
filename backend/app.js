@@ -81,23 +81,23 @@ app.use(cookieParser()); // Lee cookies del request
 app.use('/doc', swaggerUI.serve, swaggerUI.setup(swaggerDocumentation));
 
 // ─── RUTAS ───────────────────────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
-app.use('/api/usuarios', usuarioRoutes);
-app.use('/api/roles', rolRoutes);
-app.use('/api/categorias', categoriaRoutes);
-app.use('/api/proveedores', proveedorRoutes);
-app.use('/api/productos', productoRoutes);
-app.use('/api/pedidos', pedidoRoutes);
-app.use('/api/facturas', facturaRoutes);
-app.use('/api/carrito', carritoRoutes);
-app.use('/api/repartidores', repartidorRoutes);
-app.use('/api/stats', statsRoutes);
-app.use('/api/reportes', reportesRoutes);
-app.use('/api/reparto', repartoRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/bancos', bancosRoutes);
-app.use('/api/uploads', uploadRoutes);
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/usuarios', usuarioRoutes);
+app.use('/api/v1/roles', rolRoutes);
+app.use('/api/v1/categorias', categoriaRoutes);
+app.use('/api/v1/proveedores', proveedorRoutes);
+app.use('/api/v1/productos', productoRoutes);
+app.use('/api/v1/pedidos', pedidoRoutes);
+app.use('/api/v1/facturas', facturaRoutes);
+app.use('/api/v1/carrito', carritoRoutes);
+app.use('/api/v1/repartidores', repartidorRoutes);
+app.use('/api/v1/stats', statsRoutes);
+app.use('/api/v1/reportes', reportesRoutes);
+app.use('/api/v1/reparto', repartoRoutes);
+app.use('/api/v1/chat', chatRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/bancos', bancosRoutes);
+app.use('/api/v1/uploads', uploadRoutes);
 
 // ─── MANEJO DE ERRORES ───────────────────────────────────────────────────────
 app.use((err, req, res, next) => {

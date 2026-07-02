@@ -3,7 +3,6 @@
  * @description Controlador para la gestión de pedidos y transacciones de checkout.
  */
 import { v2 as cloudinary } from 'cloudinary';
-import Pedido from '../models/pedidoModel.js';
 import prisma from '../config/prisma.js';
 import { getIO } from '../socket.js';
 
@@ -29,8 +28,51 @@ const getAll = async (req, res) => {
                 { id_pedido: isNaN(Number(search)) ? undefined : Number(search) },
             ].filter(Boolean);
         }
-        const data = await Pedido.findAll(true, extraWhere);
-        res.json(data);
+        const baseWhere = { status_pedido: 'activo' };
+        const where = { ...baseWhere, ...extraWhere };
+        const data = await prisma.pedidos.findMany({
+            where,
+            orderBy: { id_pedido: 'asc' },
+            include: {
+                usuario: { select: { nombre: true } },
+                seguimiento_pedido: {
+                    orderBy: { fecha: 'desc' },
+                    take: 2,
+                    select: { notas: true, estado_nuevo: true, cambiado_por: true, fecha: true },
+                },
+            },
+        });
+        const mapped = data.map(p => {
+            const events = p.seguimiento_pedido || [];
+            const problemaEvent = events.find(e =>
+                e.notas?.includes('PROBLEMA') ||
+                e.notas?.includes('Cancelado por repartidor')
+            );
+            const alertEvent = problemaEvent || events[0];
+            const tieneAlerta = alertEvent &&
+                (alertEvent.notas?.includes('PROBLEMA') ||
+                 alertEvent.notas?.includes('Cancelado por repartidor') ||
+                 alertEvent.notas?.includes('Liberación automática')) &&
+                p.estado !== 'ENTREGADO';
+            return {
+                ...p,
+                usuario_nombre: p.usuario?.nombre,
+                usuario: undefined,
+                seguimiento_pedido: undefined,
+                alerta: tieneAlerta
+                    ? { motivo: alertEvent.notas, fecha: alertEvent.fecha }
+                    : null,
+                fsm_estado:
+                    p.estado === 'ENTREGADO' ? 'ENTREGADO' :
+                    p.estado === 'CANCELADO' ? 'CANCELADO' :
+                    p.estado === 'ASIGNADO' || p.estado === 'EN_CAMINO' ? 'EN_REPARTO' :
+                    p.estado === 'APROBADO' && !p.repartidor_id ? 'DISPONIBLE' :
+                    p.estado === 'EN_REVISION' ? 'EN_REVISION' :
+                    p.estado === 'RECHAZADO' ? 'RECHAZADO' :
+                    p.estado,
+            };
+        });
+        res.json(mapped);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -38,9 +80,12 @@ const getAll = async (req, res) => {
 
 const getOne = async (req, res) => {
     try {
-        const row = await Pedido.findById(req.params.id);
-        if (!row) return res.status(404).json({ message: "Pedido no encontrado" });
-        res.json(row);
+        const p = await prisma.pedidos.findUnique({
+            where: { id_pedido: Number(req.params.id) },
+            include: { usuario: { select: { nombre: true } } }
+        });
+        if (!p) return res.status(404).json({ message: "Pedido no encontrado" });
+        res.json({ ...p, usuario_nombre: p.usuario?.nombre, usuario: undefined });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -127,10 +172,27 @@ const checkout = async (req, res) => {
 
 const store = async (req, res) => {
     try {
-        const { usuario_id, comprobante_pago_url } = req.body;
+        const { usuario_id, comprobante_pago_url, subtotal, impuesto, total, estado, direccion_entrega, notas_entrega, simulado_por_admin, admin_id_operador, auditoria_nota, comprobante_pago_public_id } = req.body;
         if (!usuario_id) return res.status(400).json({ message: "El ID del usuario es obligatorio" });
 
-        const id = await Pedido.create(req.body);
+        const hasComprobante = !!comprobante_pago_url;
+        const created = await prisma.pedidos.create({
+            data: {
+                usuario_id: Number(usuario_id),
+                subtotal: subtotal || 0,
+                impuesto: impuesto || 0,
+                total: total || 0,
+                estado: hasComprobante ? 'EN_REVISION' : (estado || 'PENDIENTE'),
+                direccion_entrega: direccion_entrega || null,
+                notas_entrega: notas_entrega || null,
+                simulado_por_admin: simulado_por_admin || false,
+                admin_id_operador: admin_id_operador ? Number(admin_id_operador) : null,
+                auditoria_nota: auditoria_nota || null,
+                comprobante_pago_url: comprobante_pago_url || null,
+                comprobante_pago_public_id: comprobante_pago_public_id || null
+            }
+        });
+        const id = created.id_pedido;
 
         if (comprobante_pago_url) {
             await prisma.seguimiento_pedido.create({
@@ -178,7 +240,10 @@ const update = async (req, res) => {
         const { estado, ...rest } = req.body;
 
         if (estado) {
-            const pedido = await Pedido.findById(id);
+            const pedido = await prisma.pedidos.findUnique({
+                where: { id_pedido: Number(id) },
+                include: { usuario: { select: { nombre: true } } }
+            });
             if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
 
             const transicionesValidas = {
@@ -196,8 +261,12 @@ const update = async (req, res) => {
             }
         }
 
-        const actualizado = await Pedido.update(id, req.body);
-        if (!actualizado) return res.status(404).json({ message: "Pedido no encontrado" });
+        const { subtotal: s, impuesto: i, total: t, estado: e } = req.body;
+        const result = await prisma.pedidos.updateMany({
+            where: { id_pedido: Number(id) },
+            data: { subtotal: s, impuesto: i, total: t, estado: e }
+        });
+        if (!result.count) return res.status(404).json({ message: "Pedido no encontrado" });
         res.json({ message: "Pedido actualizado" });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -207,8 +276,8 @@ const update = async (req, res) => {
 const destroy = async (req, res) => {
     try {
         const { id } = req.params;
-        const eliminado = await Pedido.delete(id);
-        if (!eliminado) return res.status(404).json({ message: "Pedido no encontrado" });
+        const result = await prisma.pedidos.deleteMany({ where: { id_pedido: Number(id) } });
+        if (!result.count) return res.status(404).json({ message: "Pedido no encontrado" });
         res.json({ message: "Pedido eliminado" });
     } catch (error) {
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {
@@ -244,8 +313,30 @@ const STATUS_COLORS = {
 
 const getTicket = async (req, res) => {
     try {
-        const pedido = await Pedido.findByIdWithDetails(req.params.id);
+        const pedido = await prisma.pedidos.findUnique({
+            where: { id_pedido: Number(req.params.id) },
+            include: {
+                usuario: { select: { nombre: true, email: true, numero_documento: true, telefono: true, direccion: true } },
+                detalle_pedido: {
+                    orderBy: { id_detalle_pedido: 'asc' },
+                    include: { producto: { select: { nombre: true, imagen_url: true } } }
+                }
+            }
+        });
         if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
+        pedido.usuario_nombre = pedido.usuario?.nombre;
+        pedido.usuario_email = pedido.usuario?.email;
+        pedido.numero_documento = pedido.usuario?.numero_documento;
+        pedido.usuario_telefono = pedido.usuario?.telefono;
+        pedido.direccion = pedido.usuario?.direccion;
+        pedido.detalles = (pedido.detalle_pedido || []).map(d => ({
+            ...d,
+            producto_nombre: d.producto?.nombre,
+            imagen_url: d.producto?.imagen_url || null,
+            producto: undefined
+        }));
+        delete pedido.usuario;
+        delete pedido.detalle_pedido;
 
         if (req.query.format === 'html') {
             const detalles = pedido.detalles || [];
@@ -406,23 +497,27 @@ const getTicket = async (req, res) => {
 const cancelar = async (req, res) => {
     try {
         const { id } = req.params;
-        const pedido = await Pedido.findById(id);
+        const pedido = await prisma.pedidos.findUnique({
+            where: { id_pedido: Number(id) },
+            include: { usuario: { select: { nombre: true } } }
+        });
 
         if (!pedido) {
             return res.status(404).json({ message: "Pedido no encontrado" });
         }
 
-        // Regla RF011: Solo cancelar si está PENDIENTE
         if (pedido.estado !== 'PENDIENTE') {
             return res.status(400).json({
                 message: "No se puede cancelar un pedido que ya no está PENDIENTE"
             });
         }
 
-        // LLAMADA A LA NUEVA FUNCIÓN DEL MODELO
-        const actualizado = await Pedido.updateStatus(id, 'CANCELADO');
+        const result = await prisma.pedidos.updateMany({
+            where: { id_pedido: Number(id) },
+            data: { estado: 'CANCELADO' }
+        });
 
-        if (actualizado) {
+        if (result.count) {
             res.json({ message: "Pedido cancelado con éxito" });
         } else {
             res.status(500).json({ message: "No se pudo actualizar el estado" });
@@ -435,7 +530,10 @@ const cancelar = async (req, res) => {
 const subirComprobante = async (req, res) => {
     try {
         const { id } = req.params;
-        const pedido = await Pedido.findById(id);
+        const pedido = await prisma.pedidos.findUnique({
+            where: { id_pedido: Number(id) },
+            include: { usuario: { select: { nombre: true } } }
+        });
         if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
         if (pedido.estado !== 'PENDIENTE' && pedido.estado !== 'RECHAZADO') {
             return res.status(400).json({ message: "El pedido debe estar en estado Pendiente o Rechazado" });
@@ -465,7 +563,7 @@ const subirComprobante = async (req, res) => {
             }
         });
 
-        if (!actualizado) return res.status(500).json({ message: "No se pudo actualizar el comprobante" });
+        if (!actualizado.count) return res.status(500).json({ message: "No se pudo actualizar el comprobante" });
 
         const estadoAnterior = pedido.estado;
 
@@ -515,14 +613,20 @@ const aprobarPago = async (req, res) => {
     try {
         const { id } = req.params;
         const adminId = req.usuario.userId;
-        const pedido = await Pedido.findById(id);
+        const pedido = await prisma.pedidos.findUnique({
+            where: { id_pedido: Number(id) },
+            include: { usuario: { select: { nombre: true } } }
+        });
         if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
         if (pedido.estado !== 'EN_REVISION') {
             return res.status(400).json({ message: "El pedido no está en revisión" });
         }
 
-        const actualizado = await Pedido.updateStatus(id, 'APROBADO');
-        if (!actualizado) return res.status(500).json({ message: "No se pudo aprobar el pago" });
+        const result = await prisma.pedidos.updateMany({
+            where: { id_pedido: Number(id) },
+            data: { estado: 'APROBADO' }
+        });
+        if (!result.count) return res.status(500).json({ message: "No se pudo aprobar el pago" });
 
         await prisma.seguimiento_pedido.create({
             data: {
@@ -561,14 +665,21 @@ const rechazarPago = async (req, res) => {
         const { id } = req.params;
         const { motivo } = req.body;
         const adminId = req.usuario.userId;
-        const pedido = await Pedido.findById(id);
+        const pedido = await prisma.pedidos.findUnique({
+            where: { id_pedido: Number(id) },
+            include: { usuario: { select: { nombre: true } } }
+        });
         if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
         if (pedido.estado !== 'EN_REVISION') {
             return res.status(400).json({ message: "El pedido no está en revisión" });
         }
 
-        const actualizado = await Pedido.updateStatusWithMotivo(id, 'RECHAZADO', motivo || 'Pago rechazado');
-        if (!actualizado) return res.status(500).json({ message: "No se pudo rechazar el pago" });
+        const motivoRechazo = motivo || 'Pago rechazado';
+        const result = await prisma.pedidos.updateMany({
+            where: { id_pedido: Number(id) },
+            data: { estado: 'RECHAZADO', motivo_rechazo: motivoRechazo }
+        });
+        if (!result.count) return res.status(500).json({ message: "No se pudo rechazar el pago" });
 
         await prisma.seguimiento_pedido.create({
             data: {
@@ -641,7 +752,10 @@ const enviarComentario = async (req, res) => {
         const { id } = req.params;
         const { comentario } = req.body;
         const adminId = req.usuario.userId;
-        const pedido = await Pedido.findById(id);
+        const pedido = await prisma.pedidos.findUnique({
+            where: { id_pedido: Number(id) },
+            include: { usuario: { select: { nombre: true } } }
+        });
         if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
         if (!comentario || !comentario.trim()) {
             return res.status(400).json({ message: "El comentario es obligatorio" });
@@ -672,13 +786,19 @@ const softDelete = async (req, res) => {
     try {
         const { id } = req.params;
         const userId = req.usuario.userId;
-        const pedido = await Pedido.findById(id);
+        const pedido = await prisma.pedidos.findUnique({
+            where: { id_pedido: Number(id) },
+            include: { usuario: { select: { nombre: true } } }
+        });
         if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
         if (pedido.usuario_id !== userId) {
             return res.status(403).json({ message: "No puedes eliminar un pedido que no te pertenece" });
         }
-        const eliminado = await Pedido.softDelete(id);
-        if (!eliminado) return res.status(404).json({ message: "Pedido no encontrado" });
+        const result = await prisma.pedidos.updateMany({
+            where: { id_pedido: Number(id) },
+            data: { status_pedido: 'eliminado_usuario' }
+        });
+        if (!result.count) return res.status(404).json({ message: "Pedido no encontrado" });
         res.json({ message: "Pedido movido a la papelera" });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -689,13 +809,19 @@ const restore = async (req, res) => {
     try {
         const { id } = req.params;
         const userId = req.usuario.userId;
-        const pedido = await Pedido.findById(id);
+        const pedido = await prisma.pedidos.findUnique({
+            where: { id_pedido: Number(id) },
+            include: { usuario: { select: { nombre: true } } }
+        });
         if (!pedido) return res.status(404).json({ message: "Pedido no encontrado" });
         if (pedido.usuario_id !== userId) {
             return res.status(403).json({ message: "No puedes restaurar un pedido que no te pertenece" });
         }
-        const restaurado = await Pedido.restore(id);
-        if (!restaurado) return res.status(404).json({ message: "Pedido no encontrado" });
+        const result = await prisma.pedidos.updateMany({
+            where: { id_pedido: Number(id) },
+            data: { status_pedido: 'activo' }
+        });
+        if (!result.count) return res.status(404).json({ message: "Pedido no encontrado" });
         res.json({ message: "Pedido restaurado de la papelera" });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -705,7 +831,29 @@ const restore = async (req, res) => {
 const getTrash = async (req, res) => {
     try {
         const userId = req.usuario.userId;
-        const data = await Pedido.findDeletedByUser(userId);
+        const deletedRows = await prisma.pedidos.findMany({
+            where: { usuario_id: Number(userId), status_pedido: 'eliminado_usuario' },
+            orderBy: { fecha_pedido: 'desc' },
+            include: {
+                seguimiento_pedido: {
+                    orderBy: { fecha: 'desc' },
+                    take: 1,
+                    select: { notas: true, estado_nuevo: true, fecha: true },
+                },
+            },
+        });
+        const data = deletedRows.map(p => ({
+            ...p,
+            seguimiento_pedido: undefined,
+            fsm_estado:
+                p.estado === 'ENTREGADO' ? 'ENTREGADO' :
+                p.estado === 'CANCELADO' ? 'CANCELADO' :
+                p.estado === 'ASIGNADO' || p.estado === 'EN_CAMINO' ? 'EN_REPARTO' :
+                p.estado === 'APROBADO' && !p.repartidor_id ? 'DISPONIBLE' :
+                p.estado === 'EN_REVISION' ? 'EN_REVISION' :
+                p.estado === 'RECHAZADO' ? 'RECHAZADO' :
+                p.estado,
+        }));
         res.json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });

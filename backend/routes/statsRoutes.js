@@ -4,7 +4,7 @@
  * en tiempo real: productos activos, pedidos totales, clientes registrados y categorías.
  */
 import express from 'express';
-import pool from '../config/db.js';
+import prisma from '../config/prisma.js';
 
 const router = express.Router();
 
@@ -17,22 +17,20 @@ router.get('/', async (req, res) => {
   // #swagger.summary = 'Estadísticas generales del sistema'
   // #swagger.description = 'Devuelve conteos de productos activos, pedidos, clientes y categorías. No requiere autenticación.'
   try {
-    const [rows] = await pool.query(`
-      SELECT
-        (SELECT COUNT(*) FROM productos   WHERE activo = 1)        AS productos,
-        (SELECT COUNT(*) FROM pedidos)                             AS pedidos,
-        (SELECT COUNT(*) FROM usuarios u
-           INNER JOIN roles r ON u.rol_id = r.id_rol
-           WHERE r.nombre = 'Cliente')                            AS clientes,
-        (SELECT COUNT(*) FROM categorias)                         AS categorias
-    `);
+    const [productos, pedidos, clientes, categorias] = await Promise.all([
+      prisma.productos.count({ where: { activo: true } }),
+      prisma.pedidos.count(),
+      prisma.usuarios.count({
+        where: { rol: { nombre: 'Cliente' } }
+      }),
+      prisma.categorias.count(),
+    ]);
 
-    const data = rows[0];
     res.json({
-      productos:  Number(data.productos)  || 0,
-      pedidos:    Number(data.pedidos)    || 0,
-      clientes:   Number(data.clientes)   || 0,
-      categorias: Number(data.categorias) || 0,
+      productos:  Number(productos)  || 0,
+      pedidos:    Number(pedidos)    || 0,
+      clientes:   Number(clientes)   || 0,
+      categorias: Number(categorias) || 0,
     });
   } catch (err) {
     console.error('Error en /api/stats:', err);

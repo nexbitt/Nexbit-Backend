@@ -2,7 +2,6 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import prisma from '../config/prisma.js';
-import Usuario from '../models/usuarioModel.js';
 import { sendOtpEmail } from '../utils/email.js';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura';
@@ -19,7 +18,8 @@ const recoverPassword = async (req, res) => {
             return res.status(400).json({ success: false, error: 'EMAIL_REQUIRED', message: 'El correo electrónico es requerido.' });
         }
 
-        const user = await Usuario.findByEmail(email);
+        const u = await prisma.usuarios.findUnique({ where: { email }, include: { rol: true } });
+        const user = u ? { ...u, rol_nombre: u.rol?.nombre } : null;
         if (!user) {
             return res.status(404).json({ success: false, error: 'USER_NOT_FOUND', message: 'Usuario no encontrado.' });
         }
@@ -66,7 +66,8 @@ const verifyOtp = async (req, res) => {
             return res.status(400).json({ success: false, error: 'CODE_REQUIRED', message: 'Correo y código son requeridos.' });
         }
 
-        const user = await Usuario.findByEmail(email);
+        const u = await prisma.usuarios.findUnique({ where: { email }, include: { rol: true } });
+        const user = u ? { ...u, rol_nombre: u.rol?.nombre } : null;
         if (!user) {
             return res.status(400).json({ success: false, error: 'INVALID_CODE', message: 'Código inválido o expirado.' });
         }
@@ -148,7 +149,8 @@ const resetPassword = async (req, res) => {
             return res.status(400).json({ success: false, error: 'TOKEN_EXPIRED', message: 'Token de verificación expirado. Vuelve a verificar tu código.' });
         }
 
-        const user = await Usuario.findByEmail(email);
+        const u = await prisma.usuarios.findUnique({ where: { email }, include: { rol: true } });
+        const user = u ? { ...u, rol_nombre: u.rol?.nombre } : null;
         if (!user || user.id_usuario !== decoded.userId) {
             return res.status(400).json({ success: false, error: 'INVALID_REQUEST', message: 'Solicitud inválida.' });
         }
