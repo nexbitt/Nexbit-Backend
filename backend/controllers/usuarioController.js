@@ -197,12 +197,11 @@ const updateSecure = async (req, res) => {
         const { id } = req.params;
         const { current_password, ...data } = req.body;
 
-        if (Number(id) !== req.usuario.userId) {
-            return forbidden(res, 'No puedes modificar los datos de otro usuario');
-        }
+        const esAdmin = req.usuario.rol_id === 1;
+        const esPropio = Number(id) === req.usuario.userId;
 
-        if (!current_password) {
-            return badRequest(res, 'Debes proporcionar tu contraseña actual para guardar los cambios');
+        if (!esAdmin && !esPropio) {
+            return forbidden(res, 'No puedes modificar los datos de otro usuario');
         }
 
         const user = await Usuario.findById(id);
@@ -210,9 +209,17 @@ const updateSecure = async (req, res) => {
             return notFound(res, 'Usuario');
         }
 
-        const valida = await bcrypt.compare(current_password, user.password);
-        if (!valida) {
-            return unauthorized(res, 'Contraseña actual incorrecta. No se guardaron los cambios.');
+        // Solo se exige la contraseña actual cuando el usuario edita SU PROPIO perfil.
+        // Un admin editando a otro usuario no conoce (ni debe conocer) esa contraseña.
+        if (esPropio) {
+            if (!current_password) {
+                return badRequest(res, 'Debes proporcionar tu contraseña actual para guardar los cambios');
+            }
+
+            const valida = await bcrypt.compare(current_password, user.password);
+            if (!valida) {
+                return unauthorized(res, 'Contraseña actual incorrecta. No se guardaron los cambios.');
+            }
         }
 
         const actualizado = await Usuario.update(id, data);
