@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import usuarioController from '../controllers/usuarioController.js';
-import { verificarToken } from '../middleware/authMiddleware.js';
+import { verificarToken, verificarRol } from '../middleware/authMiddleware.js';
 
 // ─── Rutas PÚBLICAS (no requieren token) ─────────────────────────────────────
 router.post('/login',
@@ -31,6 +31,12 @@ router.get('/roles',
     usuarioController.getRoles
 );
 
+router.get('/tipos-documento',
+    /*  #swagger.tags = ['Usuarios']
+        #swagger.summary = 'Listar tipos de documento permitidos' */
+    usuarioController.getTiposDocumento
+);
+
 router.get('/me', verificarToken,
     /*  #swagger.tags = ['Usuarios']
         #swagger.summary = 'Obtener perfil del usuario autenticado' */
@@ -38,21 +44,21 @@ router.get('/me', verificarToken,
 );
 
 // ─── Rutas PROTEGIDAS (requieren JWT válido) ──────────────────────────────────
-router.get('/', verificarToken,
+router.get('/', verificarToken, verificarRol('Administrador'),
     /*  #swagger.tags = ['Usuarios']
-        #swagger.summary = 'Listar todos los usuarios' */
+        #swagger.summary = 'Listar todos los usuarios (solo Admin)' */
     usuarioController.getAll
 );
 
-router.get('/:id', verificarToken,
+router.get('/:id', verificarToken, verificarRol('Administrador'),
     /*  #swagger.tags = ['Usuarios']
-        #swagger.summary = 'Obtener un usuario por ID' */
+        #swagger.summary = 'Obtener un usuario por ID (solo Admin)' */
     usuarioController.getOne
 );
 
-router.post('/',
+router.post('/', verificarToken, verificarRol('Administrador'),
     /*  #swagger.tags = ['Usuarios']
-        #swagger.summary = 'Crear un nuevo usuario' */
+        #swagger.summary = 'Crear un nuevo usuario (solo Admin)' */
     usuarioController.store
 );
 
@@ -68,9 +74,9 @@ router.put('/:id', verificarToken,
     usuarioController.update
 );
 
-router.delete('/:id', verificarToken,
+router.delete('/:id', verificarToken, verificarRol('Administrador'),
     /*  #swagger.tags = ['Usuarios']
-        #swagger.summary = 'Eliminar un usuario' */
+        #swagger.summary = 'Eliminar un usuario (solo Admin)' */
     usuarioController.destroy
 );
 
