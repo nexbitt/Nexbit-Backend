@@ -40,10 +40,11 @@ const getPublic = async (req, res) => {
             include: includeRelations
         });
         const data = rows.map(mapProducto);
-        const safeData = data.map(({ id_producto, nombre, precio_venta, categoria_nombre, imagen_url, descripcion, stock_actual }) => ({
+        const safeData = data.map(({ id_producto, nombre, precio_venta, categoria_id, categoria_nombre, imagen_url, descripcion, stock_actual }) => ({
             id_producto,
             nombre,
             precio_venta,
+            categoria_id,
             categoria_nombre,
             imagen_url,
             descripcion,
