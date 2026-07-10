@@ -268,15 +268,19 @@ const store = async (req, res) => {
                 select: { id_usuario: true }
             });
             for (const admin of admins) {
-                await prisma.notificaciones.create({
-                    data: {
-                        usuario_id: admin.id_usuario,
-                        tipo: 'COMPROBANTE_SUBIDO',
-                        titulo: `Nuevo comprobante de pago - Pedido #${id}`,
-                        mensaje: `Se ha creado el pedido #${id} con comprobante de pago. Revisa y aprueba el pago.`,
-                        pedido_id: id
-                    }
-                });
+                try {
+                    await prisma.notificaciones.create({
+                        data: {
+                            usuario_id: admin.id_usuario,
+                            tipo: 'COMPROBANTE_SUBIDO',
+                            titulo: `Nuevo comprobante de pago - Pedido #${id}`,
+                            mensaje: `Se ha creado el pedido #${id} con comprobante de pago. Revisa y aprueba el pago.`,
+                            pedido_id: id
+                        }
+                    });
+                } catch (notifErr) {
+                    console.error('Error al crear notificación:', notifErr.message);
+                }
             }
             const io = getIO();
             io.to('admin').emit('notificacion:nuevo-comprobante', {
@@ -648,15 +652,19 @@ const subirComprobante = async (req, res) => {
                 select: { id_usuario: true }
             });
             for (const admin of admins) {
-                await prisma.notificaciones.create({
-                    data: {
-                        usuario_id: admin.id_usuario,
-                        tipo: 'COMPROBANTE_SUBIDO',
-                        titulo: `Nuevo comprobante de pago - Pedido #${id}`,
-                        mensaje: `El cliente ha subido un comprobante de pago para el pedido #${id}. Revisa y aprueba el pago.`,
-                        pedido_id: Number(id)
-                    }
-                });
+                try {
+                    await prisma.notificaciones.create({
+                        data: {
+                            usuario_id: admin.id_usuario,
+                            tipo: 'COMPROBANTE_SUBIDO',
+                            titulo: `Nuevo comprobante de pago - Pedido #${id}`,
+                            mensaje: `El cliente ha subido un comprobante de pago para el pedido #${id}. Revisa y aprueba el pago.`,
+                            pedido_id: Number(id)
+                        }
+                    });
+                } catch (notifErr) {
+                    console.error('Error al crear notificación:', notifErr.message);
+                }
             }
         } catch (_) {}
 
@@ -697,22 +705,26 @@ const aprobarPago = async (req, res) => {
         await prisma.seguimiento_pedido.create({
             data: {
                 pedido_id: Number(id),
-                estado_anterior: 'EN_REVISION',
+                estado_anterior: pedido.estado,
                 estado_nuevo: 'APROBADO',
                 cambiado_por: adminId,
                 notas: 'Administrador aprobó el pago'
             }
         });
 
-        await prisma.notificaciones.create({
-            data: {
-                usuario_id: pedido.usuario_id,
-                tipo: 'PAGO_APROBADO',
-                titulo: `Pago aprobado - Pedido #${id}`,
-                mensaje: 'Tu pago ha sido aprobado. Tu pedido ya está disponible para entrega.',
-                pedido_id: Number(id)
-            }
-        });
+        try {
+            await prisma.notificaciones.create({
+                data: {
+                    usuario_id: pedido.usuario_id,
+                    tipo: 'PAGO_APROBADO',
+                    titulo: `Pago aprobado - Pedido #${id}`,
+                    mensaje: 'Tu pago ha sido aprobado. Tu pedido ya está disponible para entrega.',
+                    pedido_id: Number(id)
+                }
+            });
+        } catch (notifErr) {
+            console.error('Error al crear notificación:', notifErr.message);
+        }
 
         const io = getIO();
         io.to(`usuario:${pedido.usuario_id}`).emit('notificacion:pago-aprobado', {
@@ -750,22 +762,26 @@ const rechazarPago = async (req, res) => {
         await prisma.seguimiento_pedido.create({
             data: {
                 pedido_id: Number(id),
-                estado_anterior: 'EN_REVISION',
+                estado_anterior: pedido.estado,
                 estado_nuevo: 'RECHAZADO',
                 cambiado_por: adminId,
                 notas: motivo || 'Administrador rechazó el pago'
             }
         });
 
-        await prisma.notificaciones.create({
-            data: {
-                usuario_id: pedido.usuario_id,
-                tipo: 'PAGO_RECHAZADO',
-                titulo: `Pago rechazado - Pedido #${id}`,
-                mensaje: `Tu pago ha sido rechazado. Motivo: ${motivo || 'Pago no válido'}. Contacta al administrador para más información.`,
-                pedido_id: Number(id)
-            }
-        });
+        try {
+            await prisma.notificaciones.create({
+                data: {
+                    usuario_id: pedido.usuario_id,
+                    tipo: 'PAGO_RECHAZADO',
+                    titulo: `Pago rechazado - Pedido #${id}`,
+                    mensaje: `Tu pago ha sido rechazado. Motivo: ${motivo || 'Pago no válido'}. Contacta al administrador para más información.`,
+                    pedido_id: Number(id)
+                }
+            });
+        } catch (notifErr) {
+            console.error('Error al crear notificación:', notifErr.message);
+        }
 
         const io = getIO();
         io.to(`usuario:${pedido.usuario_id}`).emit('notificacion:pago-rechazado', {

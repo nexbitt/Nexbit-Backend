@@ -249,11 +249,17 @@ const updateSecure = async (req, res) => {
         const { id } = req.params;
         const { current_password, ...data } = req.body;
 
-        if (Number(id) !== req.usuario.userId) {
+        const requester = await prisma.usuarios.findUnique({
+            where: { id_usuario: req.usuario.userId },
+            include: { rol: true }
+        });
+        const isAdmin = requester?.rol?.nombre?.toLowerCase().includes('admin');
+
+        if (!isAdmin && Number(id) !== req.usuario.userId) {
             return res.status(403).json({ message: 'No puedes modificar los datos de otro usuario' });
         }
 
-        if (!current_password) {
+        if (!isAdmin && !current_password) {
             return res.status(400).json({ message: 'Debes proporcionar tu contraseña actual para guardar los cambios' });
         }
 
@@ -266,9 +272,11 @@ const updateSecure = async (req, res) => {
             return res.status(404).json({ message: 'Usuario no encontrado' });
         }
 
-        const valida = await bcrypt.compare(current_password, user.password);
-        if (!valida) {
-            return res.status(401).json({ message: 'Contraseña actual incorrecta. No se guardaron los cambios.' });
+        if (!isAdmin) {
+            const valida = await bcrypt.compare(current_password, user.password);
+            if (!valida) {
+                return res.status(401).json({ message: 'Contraseña actual incorrecta. No se guardaron los cambios.' });
+            }
         }
 
         const updateData = {};
