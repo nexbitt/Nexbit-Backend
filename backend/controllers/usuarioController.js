@@ -291,11 +291,6 @@ const updateSecure = async (req, res) => {
             }
         }
 
-        // Auto-edición requiere contraseña actual
-        if (isSelfEdit && !current_password) {
-            return res.status(400).json({ message: 'Debes proporcionar tu contraseña actual para guardar los cambios' });
-        }
-
         const u = await prisma.usuarios.findUnique({
             where: { id_usuario: Number(id) },
             include: { rol: true }
@@ -304,11 +299,17 @@ const updateSecure = async (req, res) => {
             return res.status(404).json({ message: 'Usuario no encontrado' });
         }
 
-        // Verificar contraseña solo si es auto-edición
+        // Auto-edición: requiere contraseña solo si cambia email o contraseña
         if (isSelfEdit) {
-            const valida = await bcrypt.compare(current_password, u.password);
-            if (!valida) {
-                return res.status(401).json({ message: 'Contraseña actual incorrecta. No se guardaron los cambios.' });
+            const isChangingSensitive = data.password || (data.email !== undefined && data.email !== u.email);
+            if (isChangingSensitive && !current_password) {
+                return res.status(400).json({ message: 'Debes proporcionar tu contraseña actual para cambiar tu correo o contraseña' });
+            }
+            if (current_password) {
+                const valida = await bcrypt.compare(current_password, u.password);
+                if (!valida) {
+                    return res.status(401).json({ message: 'Contraseña actual incorrecta. No se guardaron los cambios.' });
+                }
             }
         }
 
