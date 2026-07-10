@@ -1,28 +1,6 @@
 version: '3.8'
 
 services:
-  # Microservicio de Productos y Categorías
-  ms-productos-categorias:
-    build:
-      context: ./microservices/productos-categorias
-      dockerfile: Dockerfile
-    container_name: nexbit-ms-productos
-    ports:
-      - "3001:3001"
-    environment:
-      - PORT=3001
-      - DATABASE_URL=mysql://root:${MYSQL_ROOT_PASSWORD:-}@mysql:3306/sistema_comercial
-      - JWT_SECRET=${JWT_SECRET:-mi_clave_secreta_super_segura_2024_remates}
-      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
-      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
-      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
-    depends_on:
-      mysql:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - nexbit-network
-
   # Backend principal (monolito existente)
   backend-principal:
     build:

@@ -5,7 +5,7 @@
 -- =====================================================
 
 -- DROP DATABASE IF EXISTS sistema_comercial;
-CREATE DATABASE sistema_comercial CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS sistema_comercial CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE sistema_comercial;
 
 -- =====================================================
