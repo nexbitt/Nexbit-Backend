@@ -144,6 +144,13 @@ const update = async (req, res) => {
         const { id } = req.params;
 
         let imagen_url = req.body.imagen_url;
+
+        const p = await prisma.productos.findUnique({
+            where: { id_producto: Number(id) },
+            include: includeRelations
+        });
+        const productoActual = p ? mapProducto(p) : null;
+
         if (req.file) {
             const cloudResult = await uploadToCloudinary(req.file.buffer, 'rematespaisa/productos', {
                 allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
@@ -151,11 +158,6 @@ const update = async (req, res) => {
             });
             imagen_url = cloudResult.secure_url || cloudResult.url;
 
-            const p = await prisma.productos.findUnique({
-                where: { id_producto: Number(id) },
-                include: includeRelations
-            });
-            const productoActual = p ? mapProducto(p) : null;
             if (productoActual?.imagen_url) {
                 try {
                     const urlParts = productoActual.imagen_url.split('/');
@@ -165,6 +167,17 @@ const update = async (req, res) => {
                 } catch (_) {
                 }
             }
+        } else if (imagen_url === '') {
+            if (productoActual?.imagen_url) {
+                try {
+                    const urlParts = productoActual.imagen_url.split('/');
+                    const folderAndFile = urlParts.slice(-3).join('/');
+                    const publicId = folderAndFile.substring(0, folderAndFile.lastIndexOf('.'));
+                    await cloudinary.uploader.destroy(publicId);
+                } catch (_) {
+                }
+            }
+            imagen_url = null;
         }
 
         const updateData = { ...req.body, imagen_url };
