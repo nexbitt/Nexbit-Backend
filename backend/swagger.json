@@ -301,6 +301,9 @@
                 },
                 "direccion": {
                   "example": "any"
+                },
+                "emergencia": {
+                  "example": "any"
                 }
               }
             }
@@ -318,6 +321,9 @@
           },
           "403": {
             "description": "Forbidden"
+          },
+          "409": {
+            "description": "Conflict"
           },
           "500": {
             "description": "Internal Server Error"
@@ -338,6 +344,20 @@
           },
           "500": {
             "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/api/v1/usuarios/tipos-documento": {
+      "get": {
+        "tags": [
+          "Usuarios"
+        ],
+        "summary": "Listar tipos de documento permitidos",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -380,7 +400,7 @@
         "tags": [
           "Usuarios"
         ],
-        "summary": "Listar todos los usuarios",
+        "summary": "Listar todos los usuarios (solo Admin)",
         "description": "",
         "parameters": [
           {
@@ -408,7 +428,7 @@
         "tags": [
           "Usuarios"
         ],
-        "summary": "Crear un nuevo usuario",
+        "summary": "Crear un nuevo usuario (solo Admin)",
         "description": "",
         "parameters": [
           {
@@ -445,6 +465,9 @@
                 },
                 "direccion": {
                   "example": "any"
+                },
+                "emergencia": {
+                  "example": "any"
                 }
               }
             }
@@ -463,6 +486,9 @@
           "403": {
             "description": "Forbidden"
           },
+          "409": {
+            "description": "Conflict"
+          },
           "500": {
             "description": "Internal Server Error"
           }
@@ -474,7 +500,7 @@
         "tags": [
           "Usuarios"
         ],
-        "summary": "Obtener un usuario por ID",
+        "summary": "Obtener un usuario por ID (solo Admin)",
         "description": "",
         "parameters": [
           {
@@ -527,20 +553,11 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
-          },
           "401": {
             "description": "Unauthorized"
           },
           "403": {
             "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "500": {
-            "description": "Internal Server Error"
           }
         }
       },
@@ -548,7 +565,7 @@
         "tags": [
           "Usuarios"
         ],
-        "summary": "Eliminar un usuario",
+        "summary": "Eliminar un usuario (solo Admin)",
         "description": "",
         "parameters": [
           {
@@ -854,6 +871,9 @@
                   "example": "any"
                 },
                 "descripcion": {
+                  "example": "any"
+                },
+                "atributos": {
                   "example": "any"
                 }
               }
@@ -1327,6 +1347,9 @@
           "403": {
             "description": "Forbidden"
           },
+          "409": {
+            "description": "Conflict"
+          },
           "500": {
             "description": "Internal Server Error"
           }
@@ -1414,6 +1437,9 @@
           },
           "404": {
             "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
           },
           "500": {
             "description": "Internal Server Error"
@@ -3208,6 +3234,10 @@
     },
     "/api/v1/reportes/ventas/kpis": {
       "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "KPIs de ventas",
         "description": "",
         "parameters": [
           {
@@ -3234,6 +3264,10 @@
     },
     "/api/v1/reportes/inventario/kpis": {
       "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "KPIs de inventario",
         "description": "",
         "parameters": [
           {
@@ -3260,6 +3294,10 @@
     },
     "/api/v1/reportes/seguridad/kpis": {
       "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "KPIs de seguridad",
         "description": "",
         "parameters": [
           {
@@ -3286,6 +3324,10 @@
     },
     "/api/v1/reportes/carritos/kpis": {
       "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "KPIs de carritos",
         "description": "",
         "parameters": [
           {
@@ -3312,6 +3354,10 @@
     },
     "/api/v1/reportes/repartidores/kpis": {
       "get": {
+        "tags": [
+          "Reportes"
+        ],
+        "summary": "KPIs de repartidores",
         "description": "",
         "parameters": [
           {
