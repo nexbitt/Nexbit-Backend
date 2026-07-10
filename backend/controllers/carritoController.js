@@ -41,7 +41,7 @@ const getCart = async (req, res) => {
         res.json(items);
     } catch (error) {
         console.error("Error al obtener carrito:", error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -73,7 +73,7 @@ const add = async (req, res) => {
         res.json(cart);
     } catch (error) {
         console.error("Error al agregar item:", error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -89,7 +89,7 @@ const updateCart = async (req, res) => {
         res.json(cart);
     } catch (error) {
         console.error("Error al actualizar item:", error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -112,7 +112,7 @@ const remove = async (req, res) => {
         res.json(cart);
     } catch (error) {
         console.error("Error al eliminar item:", error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -128,7 +128,7 @@ const clear = async (req, res) => {
         res.json([]);
     } catch (error) {
         console.error("Error al vaciar carrito:", error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -145,7 +145,7 @@ const merge = async (req, res) => {
         res.json(cart);
     } catch(error) {
         console.error("Error al fusionar:", error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 

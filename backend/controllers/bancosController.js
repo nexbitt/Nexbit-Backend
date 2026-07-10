@@ -10,7 +10,7 @@ const bancosController = {
             res.json(cuentas);
         } catch (error) {
             console.error('Error listar cuentas bancarias:', error);
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     }
 };

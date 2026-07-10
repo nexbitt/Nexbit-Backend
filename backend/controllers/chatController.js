@@ -47,7 +47,7 @@ const obtenerOCrearConversacion = async (req, res) => {
 
     res.json(conversacion);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -93,7 +93,7 @@ const enviarMensaje = async (req, res) => {
 
     res.status(201).json(nuevoMensaje);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -113,7 +113,7 @@ const marcarLeidos = async (req, res) => {
 
     res.json({ message: 'Mensajes marcados como leídos' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -131,7 +131,7 @@ const obtenerMensajesNoLeidos = async (req, res) => {
 
     res.json({ noLeidos: count });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -163,7 +163,7 @@ const listarConversacionesAdmin = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 

@@ -13,7 +13,7 @@ const getAll = async (req, res) => {
         const data = rows.map(f => ({ ...f, pedido_estado: f.pedido?.estado, pedido: undefined }));
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -23,7 +23,7 @@ const getOne = async (req, res) => {
         if (!row) return res.status(404).json({ message: "Factura no encontrada" });
         res.json(row);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -43,7 +43,7 @@ const store = async (req, res) => {
         });
         res.status(201).json({ message: "Factura generada con éxito", id_factura: result.id_factura });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -58,7 +58,7 @@ const update = async (req, res) => {
         if (!result.count) return res.status(404).json({ message: "Factura no encontrada" });
         res.json({ message: "Factura actualizada" });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -72,7 +72,7 @@ const destroy = async (req, res) => {
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {
             return res.status(400).json({ error: "No se puede eliminar esta factura porque tiene detalles asociados." });
         }
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 

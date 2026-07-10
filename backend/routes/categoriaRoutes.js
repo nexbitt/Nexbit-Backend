@@ -3,13 +3,13 @@ const router = express.Router();
 import categoriaController from '../controllers/categoriaController.js';
 import { verificarToken } from '../middleware/authMiddleware.js';
 
-router.get('/', verificarToken,
+router.get('/',
     /*  #swagger.tags = ['Categorías']
         #swagger.summary = 'Listar todas las categorías' */
     categoriaController.getAll
 );
 
-router.get('/:id', verificarToken,
+router.get('/:id',
     /*  #swagger.tags = ['Categorías']
         #swagger.summary = 'Obtener una categoría por ID' */
     categoriaController.getOne

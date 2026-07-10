@@ -121,7 +121,7 @@ const adminController = {
             res.json(result);
         } catch (error) {
             console.error('Error listar pedidos admin:', error);
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     },
 
@@ -176,7 +176,7 @@ const adminController = {
             });
         } catch (error) {
             console.error('Error obtener pedido admin:', error);
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     },
 
@@ -201,9 +201,11 @@ const adminController = {
             const io = getIO();
 
             if (accion === 'ACEPTAR') {
-                if (pedido.estado !== 'EN_REVISION') {
-                    return res.status(409).json({ message: 'El pedido debe estar en EN_REVISION para aceptarlo' });
+                if (!['EN_REVISION', 'PENDIENTE'].includes(pedido.estado)) {
+                    return res.status(409).json({ message: 'El pedido debe estar en EN_REVISION o PENDIENTE para aceptarlo' });
                 }
+
+                const estadoAnterior = pedido.estado;
 
                 await prisma.pedidos.update({
                     where: { id_pedido: Number(id) },
@@ -216,22 +218,26 @@ const adminController = {
                 await prisma.seguimiento_pedido.create({
                     data: {
                         pedido_id: Number(id),
-                        estado_anterior: 'EN_REVISION',
+                        estado_anterior: estadoAnterior,
                         estado_nuevo: 'APROBADO',
                         cambiado_por: adminId,
                         notas: nota || 'Administrador aceptó el pago'
                     }
                 });
 
-                await prisma.notificaciones.create({
-                    data: {
-                        usuario_id: pedido.usuario_id,
-                        tipo: 'PAGO_APROBADO',
-                        titulo: `Pedido #${id} aceptado`,
-                        mensaje: nota || 'Tu pago ha sido aceptado. Tu pedido ya está disponible para entrega.',
-                        pedido_id: Number(id)
-                    }
-                });
+                try {
+                    await prisma.notificaciones.create({
+                        data: {
+                            usuario_id: pedido.usuario_id,
+                            tipo: 'PAGO_APROBADO',
+                            titulo: `Pedido #${id} aceptado`,
+                            mensaje: nota || 'Tu pago ha sido aceptado. Tu pedido ya está disponible para entrega.',
+                            pedido_id: Number(id)
+                        }
+                    });
+                } catch (notifErr) {
+                    console.error('Error al crear notificación:', notifErr.message);
+                }
 
                 io.to(`usuario:${pedido.usuario_id}`).emit('notificacion:pago-aprobado', {
                     pedido_id: Number(id),
@@ -247,10 +253,11 @@ const adminController = {
                 res.json({ message: 'Pedido aceptado. Ahora es visible para repartidores.' });
 
             } else if (accion === 'RECHAZAR') {
-                if (pedido.estado !== 'EN_REVISION') {
-                    return res.status(409).json({ message: 'El pedido debe estar en EN_REVISION para rechazarlo' });
+                if (!['EN_REVISION', 'PENDIENTE'].includes(pedido.estado)) {
+                    return res.status(409).json({ message: 'El pedido debe estar en EN_REVISION o PENDIENTE para rechazarlo' });
                 }
 
+                const estadoAnterior = pedido.estado;
                 const motivo = nota || 'Pago rechazado';
 
                 await prisma.pedidos.update({
@@ -265,22 +272,26 @@ const adminController = {
                 await prisma.seguimiento_pedido.create({
                     data: {
                         pedido_id: Number(id),
-                        estado_anterior: 'EN_REVISION',
+                        estado_anterior: estadoAnterior,
                         estado_nuevo: 'RECHAZADO',
                         cambiado_por: adminId,
                         notas: motivo
                     }
                 });
 
-                await prisma.notificaciones.create({
-                    data: {
-                        usuario_id: pedido.usuario_id,
-                        tipo: 'PAGO_RECHAZADO',
-                        titulo: `Pedido #${id} rechazado`,
-                        mensaje: `Tu pago ha sido rechazado. Motivo: ${motivo}`,
-                        pedido_id: Number(id)
-                    }
-                });
+                try {
+                    await prisma.notificaciones.create({
+                        data: {
+                            usuario_id: pedido.usuario_id,
+                            tipo: 'PAGO_RECHAZADO',
+                            titulo: `Pedido #${id} rechazado`,
+                            mensaje: `Tu pago ha sido rechazado. Motivo: ${motivo}`,
+                            pedido_id: Number(id)
+                        }
+                    });
+                } catch (notifErr) {
+                    console.error('Error al crear notificación:', notifErr.message);
+                }
 
                 io.to(`usuario:${pedido.usuario_id}`).emit('notificacion:pago-rechazado', {
                     pedido_id: Number(id),
@@ -309,15 +320,19 @@ const adminController = {
                     }
                 });
 
-                await prisma.notificaciones.create({
-                    data: {
-                        usuario_id: pedido.usuario_id,
-                        tipo: 'NUEVO_MENSAJE',
-                        titulo: `Mensaje del administrador - Pedido #${id}`,
-                        mensaje: nota.trim(),
-                        pedido_id: Number(id)
-                    }
-                });
+                try {
+                    await prisma.notificaciones.create({
+                        data: {
+                            usuario_id: pedido.usuario_id,
+                            tipo: 'NUEVO_MENSAJE',
+                            titulo: `Mensaje del administrador - Pedido #${id}`,
+                            mensaje: nota.trim(),
+                            pedido_id: Number(id)
+                        }
+                    });
+                } catch (notifErr) {
+                    console.error('Error al crear notificación:', notifErr.message);
+                }
 
                 io.to(`usuario:${pedido.usuario_id}`).emit('notificacion:admin-mensaje', {
                     pedido_id: Number(id),
@@ -328,7 +343,7 @@ const adminController = {
             }
         } catch (error) {
             console.error('Error gestionar pedido:', error);
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     }
 };

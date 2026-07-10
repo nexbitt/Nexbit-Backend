@@ -9,7 +9,7 @@ const getAll = async (req, res) => {
         const data = await prisma.categorias.findMany({ orderBy: { id_categoria: 'asc' } });
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -19,7 +19,7 @@ const getOne = async (req, res) => {
         if (!row) return res.status(404).json({ message: "Categoría no encontrada" });
         res.json(row);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -32,7 +32,7 @@ const store = async (req, res) => {
         const result = await prisma.categorias.create({ data: { nombre: sanitizedNombre, descripcion: descripcion?.trim() } });
         res.status(201).json({ message: "Categoría creada con éxito", id_categoria: result.id_categoria });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -49,7 +49,7 @@ const update = async (req, res) => {
         if (!result.count) return res.status(404).json({ message: "Categoría no encontrada para actualizar" });
         res.json({ message: "Categoría actualizada correctamente" });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -63,7 +63,7 @@ const destroy = async (req, res) => {
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {
             return res.status(400).json({ error: "No se puede eliminar esta categoría porque existen productos asociados a ella." });
         }
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 

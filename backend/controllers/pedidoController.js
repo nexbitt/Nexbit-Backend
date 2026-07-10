@@ -5,6 +5,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import prisma from '../config/prisma.js';
 import { getIO } from '../socket.js';
+import { uploadToCloudinary } from '../middleware/uploadMiddleware.js';
 
 const getAll = async (req, res) => {
     try {
@@ -74,7 +75,7 @@ const getAll = async (req, res) => {
         });
         res.json(mapped);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -87,7 +88,7 @@ const getOne = async (req, res) => {
         if (!p) return res.status(404).json({ message: "Pedido no encontrado" });
         res.json({ ...p, usuario_nombre: p.usuario?.nombre, usuario: undefined });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -166,22 +167,60 @@ const checkout = async (req, res) => {
             total: Number(total)
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
 const store = async (req, res) => {
     try {
-        const { usuario_id, comprobante_pago_url, subtotal, impuesto, total, estado, direccion_entrega, notas_entrega, simulado_por_admin, admin_id_operador, auditoria_nota, comprobante_pago_public_id } = req.body;
+        const { usuario_id, comprobante_pago_url, subtotal, impuesto, total, estado, direccion_entrega, notas_entrega, simulado_por_admin, admin_id_operador, auditoria_nota, comprobante_pago_public_id, productos } = req.body;
         if (!usuario_id) return res.status(400).json({ message: "El ID del usuario es obligatorio" });
 
         const hasComprobante = !!comprobante_pago_url;
+
+        // Si se enviaron productos desde AdminCheckoutModal, calcular totales desde la BD
+        let productosData = [];
+        let calcSubtotal = subtotal;
+        let calcImpuesto = impuesto;
+        let calcTotal = total;
+
+        if (productos && productos.length > 0) {
+            const ids = productos.map(p => p.producto_id);
+            const dbProductos = await prisma.productos.findMany({
+                where: { id_producto: { in: ids } },
+                select: { id_producto: true, precio_venta: true, stock_actual: true, nombre: true }
+            });
+            const precioMap = Object.fromEntries(dbProductos.map(p => [p.id_producto, p]));
+            const stockMap = Object.fromEntries(dbProductos.map(p => [p.id_producto, p]));
+
+            for (const item of productos) {
+                const prod = precioMap[item.producto_id];
+                if (!prod) {
+                    return res.status(400).json({ message: `Producto ID ${item.producto_id} no encontrado` });
+                }
+                if (prod.stock_actual < item.cantidad) {
+                    return res.status(400).json({ message: `Stock insuficiente para: ${prod.nombre}` });
+                }
+                const precio = Number(prod.precio_venta);
+                productosData.push({
+                    producto_id: item.producto_id,
+                    cantidad: item.cantidad,
+                    precio_unitario: precio,
+                    subtotal: item.cantidad * precio
+                });
+            }
+
+            calcSubtotal = productosData.reduce((acc, p) => acc + p.subtotal, 0);
+            calcImpuesto = calcSubtotal * 0.19;
+            calcTotal = calcSubtotal + calcImpuesto;
+        }
+
         const created = await prisma.pedidos.create({
             data: {
                 usuario_id: Number(usuario_id),
-                subtotal: subtotal || 0,
-                impuesto: impuesto || 0,
-                total: total || 0,
+                subtotal: calcSubtotal || 0,
+                impuesto: calcImpuesto || 0,
+                total: calcTotal || 0,
                 estado: hasComprobante ? 'EN_REVISION' : (estado || 'PENDIENTE'),
                 direccion_entrega: direccion_entrega || null,
                 notas_entrega: notas_entrega || null,
@@ -193,6 +232,25 @@ const store = async (req, res) => {
             }
         });
         const id = created.id_pedido;
+
+        // Crear detalle_pedido y descontar stock si hay productos
+        if (productosData.length > 0) {
+            for (const item of productosData) {
+                await prisma.detalle_pedido.create({
+                    data: {
+                        pedido_id: id,
+                        producto_id: item.producto_id,
+                        cantidad: item.cantidad,
+                        precio_unitario: item.precio_unitario,
+                        subtotal: item.subtotal
+                    }
+                });
+                await prisma.productos.update({
+                    where: { id_producto: item.producto_id },
+                    data: { stock_actual: { decrement: item.cantidad } }
+                });
+            }
+        }
 
         if (comprobante_pago_url) {
             await prisma.seguimiento_pedido.create({
@@ -210,15 +268,19 @@ const store = async (req, res) => {
                 select: { id_usuario: true }
             });
             for (const admin of admins) {
-                await prisma.notificaciones.create({
-                    data: {
-                        usuario_id: admin.id_usuario,
-                        tipo: 'COMPROBANTE_SUBIDO',
-                        titulo: `Nuevo comprobante de pago - Pedido #${id}`,
-                        mensaje: `Se ha creado el pedido #${id} con comprobante de pago. Revisa y aprueba el pago.`,
-                        pedido_id: id
-                    }
-                });
+                try {
+                    await prisma.notificaciones.create({
+                        data: {
+                            usuario_id: admin.id_usuario,
+                            tipo: 'COMPROBANTE_SUBIDO',
+                            titulo: `Nuevo comprobante de pago - Pedido #${id}`,
+                            mensaje: `Se ha creado el pedido #${id} con comprobante de pago. Revisa y aprueba el pago.`,
+                            pedido_id: id
+                        }
+                    });
+                } catch (notifErr) {
+                    console.error('Error al crear notificación:', notifErr.message);
+                }
             }
             const io = getIO();
             io.to('admin').emit('notificacion:nuevo-comprobante', {
@@ -230,7 +292,7 @@ const store = async (req, res) => {
 
         res.status(201).json({ message: "Pedido creado con éxito", id_pedido: id });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -269,7 +331,7 @@ const update = async (req, res) => {
         if (!result.count) return res.status(404).json({ message: "Pedido no encontrado" });
         res.json({ message: "Pedido actualizado" });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -283,7 +345,7 @@ const destroy = async (req, res) => {
         if (error.code === 'ER_ROW_IS_REFERENCED_2') {
             return res.status(400).json({ error: "No se puede eliminar este pedido porque tiene facturas o detalles asociados." });
         }
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -491,7 +553,7 @@ const getTicket = async (req, res) => {
 
         res.json(pedido);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 const cancelar = async (req, res) => {
@@ -523,7 +585,7 @@ const cancelar = async (req, res) => {
             res.status(500).json({ message: "No se pudo actualizar el estado" });
         }
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -552,8 +614,13 @@ const subirComprobante = async (req, res) => {
             }
         }
 
-        const comprobanteUrl = req.file.secure_url || req.file.url || req.file.path;
-        const comprobantePublicId = req.file.public_id || req.file.filename || null;
+        // Subir el archivo a Cloudinary manualmente desde el buffer (memoryStorage)
+        const cloudResult = await uploadToCloudinary(req.file.buffer, 'rematespaisa/comprobantes', {
+            allowed_formats: ['jpg', 'jpeg', 'png'],
+            transformation: [{ width: 1200, height: 1200, crop: 'limit' }, { quality: 'auto' }]
+        });
+        const comprobanteUrl = cloudResult.secure_url || cloudResult.url;
+        const comprobantePublicId = cloudResult.public_id;
         const actualizado = await prisma.pedidos.updateMany({
             where: { id_pedido: Number(id) },
             data: {
@@ -579,33 +646,40 @@ const subirComprobante = async (req, res) => {
             }
         });
 
-        const admins = await prisma.usuarios.findMany({
-            where: { rol_id: 1, activo: true },
-            select: { id_usuario: true }
-        });
-
-        for (const admin of admins) {
-            await prisma.notificaciones.create({
-                data: {
-                    usuario_id: admin.id_usuario,
-                    tipo: 'COMPROBANTE_SUBIDO',
-                    titulo: `Nuevo comprobante de pago - Pedido #${id}`,
-                    mensaje: `El cliente ha subido un comprobante de pago para el pedido #${id}. Revisa y aprueba el pago.`,
-                    pedido_id: Number(id)
-                }
+        try {
+            const admins = await prisma.usuarios.findMany({
+                where: { rol_id: 1, activo: true },
+                select: { id_usuario: true }
             });
-        }
+            for (const admin of admins) {
+                try {
+                    await prisma.notificaciones.create({
+                        data: {
+                            usuario_id: admin.id_usuario,
+                            tipo: 'COMPROBANTE_SUBIDO',
+                            titulo: `Nuevo comprobante de pago - Pedido #${id}`,
+                            mensaje: `El cliente ha subido un comprobante de pago para el pedido #${id}. Revisa y aprueba el pago.`,
+                            pedido_id: Number(id)
+                        }
+                    });
+                } catch (notifErr) {
+                    console.error('Error al crear notificación:', notifErr.message);
+                }
+            }
+        } catch (_) {}
 
-        const io = getIO();
-        io.to('admin').emit('notificacion:nuevo-comprobante', {
-            pedido_id: Number(id),
-            titulo: `Nuevo comprobante de pago - Pedido #${id}`,
-            mensaje: 'Un cliente ha subido un comprobante de pago para revisión.'
-        });
+        try {
+            const io = getIO();
+            io.to('admin').emit('notificacion:nuevo-comprobante', {
+                pedido_id: Number(id),
+                titulo: `Nuevo comprobante de pago - Pedido #${id}`,
+                mensaje: 'Un cliente ha subido un comprobante de pago para revisión.'
+            });
+        } catch (_) {}
 
         res.json({ message: "Comprobante subido con éxito. Pedido en revisión." });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -631,22 +705,26 @@ const aprobarPago = async (req, res) => {
         await prisma.seguimiento_pedido.create({
             data: {
                 pedido_id: Number(id),
-                estado_anterior: 'EN_REVISION',
+                estado_anterior: pedido.estado,
                 estado_nuevo: 'APROBADO',
                 cambiado_por: adminId,
                 notas: 'Administrador aprobó el pago'
             }
         });
 
-        await prisma.notificaciones.create({
-            data: {
-                usuario_id: pedido.usuario_id,
-                tipo: 'PAGO_APROBADO',
-                titulo: `Pago aprobado - Pedido #${id}`,
-                mensaje: 'Tu pago ha sido aprobado. Tu pedido ya está disponible para entrega.',
-                pedido_id: Number(id)
-            }
-        });
+        try {
+            await prisma.notificaciones.create({
+                data: {
+                    usuario_id: pedido.usuario_id,
+                    tipo: 'PAGO_APROBADO',
+                    titulo: `Pago aprobado - Pedido #${id}`,
+                    mensaje: 'Tu pago ha sido aprobado. Tu pedido ya está disponible para entrega.',
+                    pedido_id: Number(id)
+                }
+            });
+        } catch (notifErr) {
+            console.error('Error al crear notificación:', notifErr.message);
+        }
 
         const io = getIO();
         io.to(`usuario:${pedido.usuario_id}`).emit('notificacion:pago-aprobado', {
@@ -656,7 +734,7 @@ const aprobarPago = async (req, res) => {
 
         res.json({ message: "Pago aprobado. Pedido listo para entrega." });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -684,22 +762,26 @@ const rechazarPago = async (req, res) => {
         await prisma.seguimiento_pedido.create({
             data: {
                 pedido_id: Number(id),
-                estado_anterior: 'EN_REVISION',
+                estado_anterior: pedido.estado,
                 estado_nuevo: 'RECHAZADO',
                 cambiado_por: adminId,
                 notas: motivo || 'Administrador rechazó el pago'
             }
         });
 
-        await prisma.notificaciones.create({
-            data: {
-                usuario_id: pedido.usuario_id,
-                tipo: 'PAGO_RECHAZADO',
-                titulo: `Pago rechazado - Pedido #${id}`,
-                mensaje: `Tu pago ha sido rechazado. Motivo: ${motivo || 'Pago no válido'}. Contacta al administrador para más información.`,
-                pedido_id: Number(id)
-            }
-        });
+        try {
+            await prisma.notificaciones.create({
+                data: {
+                    usuario_id: pedido.usuario_id,
+                    tipo: 'PAGO_RECHAZADO',
+                    titulo: `Pago rechazado - Pedido #${id}`,
+                    mensaje: `Tu pago ha sido rechazado. Motivo: ${motivo || 'Pago no válido'}. Contacta al administrador para más información.`,
+                    pedido_id: Number(id)
+                }
+            });
+        } catch (notifErr) {
+            console.error('Error al crear notificación:', notifErr.message);
+        }
 
         const io = getIO();
         io.to(`usuario:${pedido.usuario_id}`).emit('notificacion:pago-rechazado', {
@@ -709,7 +791,7 @@ const rechazarPago = async (req, res) => {
 
         res.json({ message: "Pago rechazado. Se notificará al cliente." });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -727,7 +809,7 @@ const pedidosEnRevision = async (req, res) => {
         });
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -743,7 +825,7 @@ const verificarPedidoActivo = async (req, res) => {
         });
         res.json({ tienePedidoActivo: !!pedido, pedido });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -778,7 +860,7 @@ const enviarComentario = async (req, res) => {
 
         res.json({ message: "Comentario enviado con éxito" });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -801,7 +883,7 @@ const softDelete = async (req, res) => {
         if (!result.count) return res.status(404).json({ message: "Pedido no encontrado" });
         res.json({ message: "Pedido movido a la papelera" });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -824,7 +906,7 @@ const restore = async (req, res) => {
         if (!result.count) return res.status(404).json({ message: "Pedido no encontrado" });
         res.json({ message: "Pedido restaurado de la papelera" });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -856,7 +938,7 @@ const getTrash = async (req, res) => {
         }));
         res.json(data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -894,7 +976,7 @@ const getMisPedidos = async (req, res) => {
         
         res.json(result);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: error.message });
     }
 };
 

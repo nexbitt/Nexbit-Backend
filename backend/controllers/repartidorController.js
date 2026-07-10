@@ -32,7 +32,7 @@ const repartidorController = {
             });
             res.json(repartidores);
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     },
 
@@ -66,7 +66,7 @@ const repartidorController = {
             }
             res.json(r);
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     },
 
@@ -79,7 +79,7 @@ const repartidorController = {
             });
             res.json({ message: 'Estado del repartidor actualizado exitosamente' });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     },
 
@@ -107,9 +107,9 @@ const repartidorController = {
             res.json({ message: 'Pedido asignado exitosamente al repartidor' });
         } catch (error) {
             if (error.message === 'El pedido ya fue asignado a otro repartidor') {
-                return res.status(409).json({ error: error.message });
+                return res.status(409).json({ message: error.message });
             }
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     },
 
@@ -125,7 +125,7 @@ const repartidorController = {
             });
             res.json({ message: 'Pedido desasignado exitosamente' });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     },
 
@@ -155,7 +155,7 @@ const repartidorController = {
             ]);
             res.json({ message: 'Estado del pedido actualizado exitosamente' });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     },
 
@@ -167,7 +167,7 @@ const repartidorController = {
             });
             res.json(pedidos.map(p => ({ ...p, cliente: p.usuario })));
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ message: error.message });
         }
     }
 };
