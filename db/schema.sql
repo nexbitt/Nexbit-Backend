@@ -13,9 +13,12 @@ USE sistema_comercial;
 -- =====================================================
 
 CREATE TABLE roles (
-    id_rol      INT          AUTO_INCREMENT PRIMARY KEY,
-    nombre      VARCHAR(50)  NOT NULL UNIQUE,
-    descripcion VARCHAR(255)
+    id_rol        INT          AUTO_INCREMENT PRIMARY KEY,
+    nombre        VARCHAR(50)  NOT NULL UNIQUE,
+    descripcion   VARCHAR(255),
+    rol_padre_id  INT          NULL,
+    CONSTRAINT fk_rol_padre FOREIGN KEY (rol_padre_id)
+        REFERENCES roles(id_rol) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 CREATE TABLE proveedores (
@@ -63,7 +66,7 @@ CREATE TABLE productos (
     id_producto   INT           AUTO_INCREMENT PRIMARY KEY,
     categoria_id  INT,
     proveedor_id  INT           NULL,
-    nombre        VARCHAR(150)  NOT NULL,
+    nombre        VARCHAR(150)  NOT NULL UNIQUE,
     descripcion   TEXT,
     imagen_url    VARCHAR(500)  NULL,
     precio_compra DECIMAL(12,2) NOT NULL DEFAULT 0,

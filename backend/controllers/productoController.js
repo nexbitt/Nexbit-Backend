@@ -10,14 +10,33 @@ const includeRelations = {
     proveedor:  { select: { nombre: true } }
 };
 
-const mapProducto = (p) => ({
-    ...p,
-    activo: p.activo ? 1 : 0,
-    categoria_nombre: p.categoria?.nombre,
-    proveedor_nombre: p.proveedor?.nombre,
-    categoria: undefined,
-    proveedor: undefined
-});
+const IVA_PORCENTAJE = 0.19; // 19% IVA Colombia
+
+// Extraer ubicación desde la descripción si está en formato JSON
+const extraerUbicacion = (descripcion) => {
+    try {
+        const parsed = JSON.parse(descripcion);
+        return parsed.ubicacion || null;
+    } catch { return null; }
+};
+
+const mapProducto = (p) => {
+    const precioVenta = Number(p.precio_venta);
+    return {
+        ...p,
+        activo: p.activo ? 1 : 0,
+        categoria_nombre: p.categoria?.nombre,
+        proveedor_nombre: p.proveedor?.nombre,
+        categoria: undefined,
+        proveedor: undefined,
+        // Campos virtuales para sustentación
+        codigo_serie: `PRD-${String(p.id_producto).padStart(5, '0')}-${p.categoria_id || '0'}`,
+        iva_porcentaje: Math.round(IVA_PORCENTAJE * 100) + '%',
+        precio_sin_iva: precioVenta,
+        precio_con_iva: Math.round(precioVenta * (1 + IVA_PORCENTAJE) * 100) / 100,
+        ubicacion: extraerUbicacion(p.descripcion)
+    };
+};
 
 const getAll = async (req, res) => {
     try {
@@ -40,14 +59,20 @@ const getPublic = async (req, res) => {
             include: includeRelations
         });
         const data = rows.map(mapProducto);
-        const safeData = data.map(({ id_producto, nombre, precio_venta, categoria_nombre, imagen_url, descripcion, stock_actual }) => ({
+        const safeData = data.map(({ id_producto, nombre, precio_venta, categoria_nombre, imagen_url, descripcion, stock_actual, codigo_serie, iva_porcentaje, precio_sin_iva, precio_con_iva, ubicacion, proveedor_nombre }) => ({
             id_producto,
             nombre,
             precio_venta,
             categoria_nombre,
             imagen_url,
             descripcion,
-            stock_actual
+            stock_actual,
+            codigo_serie,
+            iva_porcentaje,
+            precio_sin_iva,
+            precio_con_iva,
+            ubicacion,
+            proveedor_nombre
         }));
         res.json(safeData);
     } catch (error) {
@@ -99,12 +124,28 @@ const getOne = async (req, res) => {
     }
 };
 
+const checkNombreDuplicado = async (nombre, excludeId = null) => {
+    const existing = await prisma.productos.findFirst({
+        where: {
+            nombre: { equals: nombre },
+            ...(excludeId ? { id_producto: { not: excludeId } } : {})
+        }
+    });
+    return !!existing;
+};
+
 const store = async (req, res) => {
     try {
         const { nombre } = req.body;
         const sanitizedNombre = nombre?.trim();
         if (!sanitizedNombre || sanitizedNombre.length < 3) {
             return res.status(400).json({ message: "El nombre debe tener al menos 3 caracteres" });
+        }
+
+        // Verificar nombre duplicado
+        const duplicado = await checkNombreDuplicado(sanitizedNombre);
+        if (duplicado) {
+            return res.status(409).json({ message: "Ya existe un producto con ese nombre. Use un nombre diferente." });
         }
 
         const { categoria_id, precio_compra, precio_venta } = req.body;
@@ -171,6 +212,11 @@ const update = async (req, res) => {
         if (updateData.nombre) {
             updateData.nombre = updateData.nombre.trim();
             if (updateData.nombre.length < 3) return res.status(400).json({ message: "El nombre debe tener al menos 3 caracteres" });
+            // Verificar nombre duplicado (excluyendo el producto actual)
+            const duplicado = await checkNombreDuplicado(updateData.nombre, Number(id));
+            if (duplicado) {
+                return res.status(409).json({ message: "Ya existe otro producto con ese nombre. Use un nombre diferente." });
+            }
         }
 
         const result = await prisma.productos.updateMany({

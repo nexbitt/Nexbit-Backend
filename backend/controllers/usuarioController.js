@@ -42,7 +42,9 @@ const getAll = async (req, res) => {
                 rol_id: true,
                 nombre: true,
                 email: true,
+                tipo_documento: true,
                 numero_documento: true,
+                telefono: true,
                 activo: true,
                 rol: { select: { nombre: true } }
             }

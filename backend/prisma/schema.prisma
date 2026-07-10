@@ -8,10 +8,13 @@ datasource db {
 }
 
 model roles {
-  id_rol      Int        @id @default(autoincrement())
-  nombre      String     @unique(map: "nombre") @db.VarChar(50)
-  descripcion String?    @db.VarChar(255)
-  usuarios    usuarios[]
+    id_rol        Int        @id @default(autoincrement())
+    nombre        String     @unique(map: "nombre") @db.VarChar(50)
+    descripcion   String?    @db.VarChar(255)
+    rol_padre_id  Int?
+    rol_padre     roles?     @relation("rol_hijos", fields: [rol_padre_id], references: [id_rol])
+    sub_roles     roles[]    @relation("rol_hijos")
+    usuarios      usuarios[]
 }
 
 model usuarios {
@@ -66,8 +69,8 @@ model productos {
   id_producto            Int                      @id @default(autoincrement())
   categoria_id           Int?
   proveedor_id           Int?
-  nombre                 String                   @db.VarChar(150)
-  descripcion            String?                  @db.Text
+    nombre                 String                   @unique(map: "productos_nombre") @db.VarChar(150)
+    descripcion            String?                  @db.Text
   imagen_url             String?                  @db.VarChar(500)
   precio_compra          Decimal                  @default(0.00) @db.Decimal(12, 2)
   precio_venta           Decimal                  @default(0.00) @db.Decimal(12, 2)
