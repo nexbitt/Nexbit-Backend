@@ -21,6 +21,7 @@ Esta versión V2 incluye correcciones de seguridad, nuevas funcionalidades en el
 | `backend/routes/usuarioRoutes.js` | `POST /registro` se mantiene público (auto-registro) | `c6bc187` |
 | `backend/routes/usuarioRoutes.js` | `PUT /:id` se mantiene con `verificarToken` (controller decide admin vs self) | `c6bc187` |
 | `backend/routes/reportesRoutes.js` | Anotaciones Swagger agregadas a rutas KPI | `d4b92df` |
+| `backend/controllers/usuarioController.js` | `updateSecure`: admin edita sin `current_password`; self-edit solo exige `current_password` si cambia email o password | `f6f9f15` |
 | `backend/controllers/usuarioController.js` | `updateSecure`: admin edita sin `current_password`; self-edit la requiere | `66c9660` |
 | `backend/controllers/usuarioController.js` | `getOne`: eliminado `password` de la respuesta | `66c9660` |
 | `backend/controllers/usuarioController.js` | `store`: captura error `P2002` (email duplicado) → 409 en vez de 500 | `66c9660` |
@@ -57,8 +58,9 @@ Esta versión V2 incluye correcciones de seguridad, nuevas funcionalidades en el
 |---------|--------|--------|
 | `app/src/main/java/.../CatalogoActivity.kt` | Agregado `.error(R.drawable.ic_placeholder)` a Glide | `fc0bf0c` |
 | `app/src/main/java/.../CatalogoFragment.kt` | Agregado `.error(R.drawable.ic_placeholder)` a Glide | `fc0bf0c` |
-| `app/src/main/java/.../ClientMainActivity.kt` | Agregado `.error(R.drawable.ic_placeholder)` a Glide | `fc0bf0c` |
+| `app/src/main/java/.../ClientMainActivity.kt` | **CRITICAL**: `getUsuario(userId)` → `getMe()` (evita 403). `.error(R.drawable.ic_placeholder)` a Glide | `3e37ebc` |
 | `app/src/main/java/.../MainOrbixActivity.kt` | Agregado `.error(R.drawable.ic_placeholder)` a Glide | `fc0bf0c` |
+| `app/src/main/java/.../PerfilActivity.kt` | **CRITICAL**: `getUsuario(currentUserId)` → `getMe()` (evita 403) | `3e37ebc` |
 | `app/src/main/java/.../ProductDetailActivity.kt` | Agregado `.error(R.drawable.ic_placeholder)` a Glide | `fc0bf0c` |
 
 ---
