@@ -3,6 +3,17 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'mi_clave_secreta_super_segura';
+const TIPOS_DOCUMENTO_VALIDOS = ['CC', 'TI', 'CE', 'PASAPORTE'];
+
+// Almacenar info de emergencia como JSON anidado en direccion
+const parseEmergencia = (direccion) => {
+    if (!direccion) return {};
+    try {
+        const parsed = JSON.parse(direccion);
+        if (parsed && parsed.emergencia) return parsed.emergencia;
+    } catch { /* no es JSON */ }
+    return {};
+};
 
 const cookieOptions = {
     httpOnly: true,
@@ -50,7 +61,9 @@ const getOne = async (req, res) => {
             include: { rol: true }
         });
         if (!u) return res.status(404).json({ message: 'Usuario no encontrado' });
-        res.json({ ...u, rol_nombre: u.rol?.nombre });
+        const user = { ...u, rol_nombre: u.rol?.nombre };
+        delete user.password;
+        res.json(user);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -58,9 +71,25 @@ const getOne = async (req, res) => {
 
 const store = async (req, res) => {
     try {
-        const { rol_id, nombre, email, password, tipo_documento, numero_documento, telefono, direccion } = req.body;
+        const { rol_id, nombre, email, password, tipo_documento, numero_documento, telefono, direccion, emergencia } = req.body;
         if (!rol_id || !nombre || !email || !password) {
             return res.status(400).json({ message: 'Faltan campos obligatorios' });
+        }
+
+        // Validar tipo_documento contra lista permitida
+        if (tipo_documento && !TIPOS_DOCUMENTO_VALIDOS.includes(tipo_documento)) {
+            return res.status(400).json({ message: 'Tipo de documento inválido. Los valores permitidos son: CC, TI, CE, PASAPORTE' });
+        }
+
+        // Almacenar info de emergencia como JSON en direccion
+        let direccionFinal = direccion || '';
+        if (emergencia && emergencia.nombre && emergencia.telefono) {
+            try {
+                const parsedDir = direccion ? JSON.parse(direccion) : {};
+                direccionFinal = JSON.stringify({ ...parsedDir, emergencia });
+            } catch {
+                direccionFinal = JSON.stringify({ texto: direccion || '', emergencia });
+            }
         }
 
         const roleObj = await prisma.roles.findUnique({ where: { id_rol: Number(rol_id) } });
@@ -116,28 +145,21 @@ const store = async (req, res) => {
                 tipo_documento,
                 numero_documento,
                 telefono,
-                direccion,
+                direccion: direccionFinal,
                 activo: true
             }
         });
         res.status(201).json({ message: 'Usuario creado con éxito', id_usuario: result.id_usuario });
     } catch (error) {
+        if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
+            return res.status(409).json({ message: 'El correo electrónico ya está registrado' });
+        }
         res.status(500).json({ message: error.message });
     }
 };
 
-const update = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const actualizado = await prisma.usuarios.updateMany({
-            where: { id_usuario: Number(id) },
-            data: req.body
-        });
-        if (!actualizado.count) return res.status(404).json({ message: 'No se encontró el registro para actualizar' });
-        res.json({ message: 'Usuario actualizado correctamente' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+const getTiposDocumento = async (req, res) => {
+    res.json(TIPOS_DOCUMENTO_VALIDOS.map(t => ({ valor: t, label: t === 'CC' ? 'Cédula de Ciudadanía' : t === 'TI' ? 'Tarjeta de Identidad' : t === 'CE' ? 'Cédula de Extranjería' : 'Pasaporte' })));
 };
 
 const getRoles = async (req, res) => {
@@ -206,6 +228,12 @@ const getMe = async (req, res) => {
         if (!u) return res.status(404).json({ message: 'Usuario no encontrado' });
         const user = { ...u, rol_nombre: u.rol?.nombre };
         delete user.password;
+        // Parsear info de emergencia desde direccion JSON
+        const emergencia = parseEmergencia(u.direccion);
+        if (emergencia && emergencia.nombre) {
+            user.emergencia = emergencia;
+            user.direccion_texto = typeof JSON.parse(u.direccion) === 'object' ? (JSON.parse(u.direccion).texto || '') : u.direccion;
+        }
         res.json(user);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -248,12 +276,21 @@ const updateSecure = async (req, res) => {
     try {
         const { id } = req.params;
         const { current_password, ...data } = req.body;
+        const isSelfEdit = Number(id) === req.usuario.userId;
 
-        if (Number(id) !== req.usuario.userId) {
-            return res.status(403).json({ message: 'No puedes modificar los datos de otro usuario' });
+        // Si NO es auto-edición, verificar que sea un administrador
+        if (!isSelfEdit) {
+            const authedUser = await prisma.usuarios.findUnique({
+                where: { id_usuario: req.usuario.userId },
+                include: { rol: { select: { nombre: true } } }
+            });
+            if (!authedUser || authedUser.rol?.nombre !== 'Administrador') {
+                return res.status(403).json({ message: 'No tienes permiso para modificar este usuario' });
+            }
         }
 
-        if (!current_password) {
+        // Auto-edición requiere contraseña actual
+        if (isSelfEdit && !current_password) {
             return res.status(400).json({ message: 'Debes proporcionar tu contraseña actual para guardar los cambios' });
         }
 
@@ -261,14 +298,16 @@ const updateSecure = async (req, res) => {
             where: { id_usuario: Number(id) },
             include: { rol: true }
         });
-        const user = u ? { ...u, rol_nombre: u.rol?.nombre } : null;
-        if (!user) {
+        if (!u) {
             return res.status(404).json({ message: 'Usuario no encontrado' });
         }
 
-        const valida = await bcrypt.compare(current_password, user.password);
-        if (!valida) {
-            return res.status(401).json({ message: 'Contraseña actual incorrecta. No se guardaron los cambios.' });
+        // Verificar contraseña solo si es auto-edición
+        if (isSelfEdit) {
+            const valida = await bcrypt.compare(current_password, u.password);
+            if (!valida) {
+                return res.status(401).json({ message: 'Contraseña actual incorrecta. No se guardaron los cambios.' });
+            }
         }
 
         const updateData = {};
@@ -298,4 +337,4 @@ const updateSecure = async (req, res) => {
     }
 };
 
-export default { getAll, getOne, store, update: updateSecure, getRoles, destroy, login, logout, getMe, verificarContrasena };
+export default { getAll, getOne, store, update: updateSecure, getRoles, destroy, login, logout, getMe, verificarContrasena, getTiposDocumento };
